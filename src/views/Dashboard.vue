@@ -38,15 +38,6 @@ const totalFees = computed(() =>
     collegeStore.colleges.reduce((s, c) => s + c.applicationFee, 0),
 );
 
-const scholarshipStats = computed(() => {
-    const all = scholarshipStore.scholarships;
-    const won = all.filter((s) => s.status === "Won");
-    return {
-        total: all.length,
-        wonAmount: won.reduce((s, x) => s + x.awardAmount, 0),
-    };
-});
-
 const monthNames = [
     "January",
     "February",
@@ -132,10 +123,11 @@ const calendarDays = computed(() => {
         date: string;
         isToday: boolean;
         colleges: typeof collegeStore.colleges;
+        scholarships: string[];
     }[] = [];
 
     for (let i = 0; i < firstDay; i++)
-        days.push({ day: 0, date: "", isToday: false, colleges: [] });
+        days.push({ day: 0, date: "", isToday: false, colleges: [], scholarships: [] });
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${calYear.value}-${String(calMonth.value + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
         days.push({

@@ -661,7 +661,7 @@ function removeItem(id: string) {
     if (confirm("Delete this entry?")) store.deleteItem(id);
 }
 
-function formatValue(key: string, val: any): string {
+function formatValue(_key: string, val: any): string {
     if (val === null || val === undefined) return "—";
     if (Array.isArray(val)) return val.join(", ");
     const s = String(val);

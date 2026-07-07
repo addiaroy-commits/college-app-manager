@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed } from "vue";
 import {
     useScholarshipStore,
     type Scholarship,
@@ -748,6 +748,10 @@ const aiPrompts = [
 function scamWarningsText(s: Scholarship): string[] {
     return getScamWarnings(s);
 }
+
+function goToEssays() {
+    location.href = "/essays";
+}
 </script>
 
 <template>
@@ -1222,19 +1226,19 @@ function scamWarningsText(s: Scholarship): string[] {
                         <div class="detail-actions">
                             <button
                                 class="btn-mark submitted"
-                                @click="markSubmitted(selectedScholarship)"
+                                @click="markSubmitted(selectedScholarship!)"
                             >
                                 📤 Mark Submitted
                             </button>
                             <button
                                 class="btn-mark won"
-                                @click="markWon(selectedScholarship)"
+                                @click="markWon(selectedScholarship!)"
                             >
                                 🏆 I Won This!
                             </button>
                             <button
                                 class="btn-mark rejected"
-                                @click="markRejected(selectedScholarship)"
+                                @click="markRejected(selectedScholarship!)"
                             >
                                 ❌ Rejected
                             </button>
@@ -1250,7 +1254,7 @@ function scamWarningsText(s: Scholarship): string[] {
                                 class="checklist-row"
                                 @click="
                                     toggleChecklistItem(
-                                        selectedScholarship,
+                                        selectedScholarship!,
                                         item.id,
                                     )
                                 "
@@ -1337,7 +1341,7 @@ function scamWarningsText(s: Scholarship): string[] {
                                     class="mini-del"
                                     @click="
                                         unlinkDocument(
-                                            selectedScholarship,
+                                            selectedScholarship!,
                                             link.id,
                                         )
                                     "
@@ -1373,7 +1377,7 @@ function scamWarningsText(s: Scholarship): string[] {
                                     class="mini-del"
                                     @click="
                                         unlinkEssay(
-                                            selectedScholarship,
+                                            selectedScholarship!,
                                             link.id,
                                         )
                                     "
@@ -1671,7 +1675,7 @@ function scamWarningsText(s: Scholarship): string[] {
                         class="btn-link"
                         @click="
                             showEssayPicker = false;
-                            window.location.href = '/essays';
+                            goToEssays();
                         "
                     >
                         + Create New Essay in Tracker
@@ -1818,7 +1822,7 @@ function scamWarningsText(s: Scholarship): string[] {
     margin-bottom: 16px;
 }
 .search-bar {
-    width: 100%%;
+    width: 100%;
     padding: 10px 16px;
     border: 1px solid var(--border-color);
     border-radius: 10px;
@@ -2008,7 +2012,7 @@ function scamWarningsText(s: Scholarship): string[] {
     overflow: hidden;
 }
 .mini-fill {
-    height: 100%%;
+    height: 100%;
     background: var(--primary, #5b21b6);
     border-radius: 3px;
     transition: width 0.3s;
@@ -2026,7 +2030,7 @@ function scamWarningsText(s: Scholarship): string[] {
     margin-bottom: 4px;
 }
 .progress-fill {
-    height: 100%%;
+    height: 100%;
     background: var(--primary, #5b21b6);
     border-radius: 5px;
     transition: width 0.3s;
@@ -2235,7 +2239,7 @@ function scamWarningsText(s: Scholarship): string[] {
     border-radius: 8px;
     font-size: 13px;
     cursor: pointer;
-    width: 100%%;
+    width: 100%;
     font-weight: 600;
 }
 .btn-link:hover {
@@ -2354,7 +2358,7 @@ function scamWarningsText(s: Scholarship): string[] {
 .field input,
 .field select,
 .field textarea {
-    width: 100%%;
+    width: 100%;
     padding: 8px 12px;
     border: 1px solid var(--border-color);
     border-radius: 6px;
@@ -2387,8 +2391,8 @@ function scamWarningsText(s: Scholarship): string[] {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%%;
-    height: 100%%;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
@@ -2399,7 +2403,7 @@ function scamWarningsText(s: Scholarship): string[] {
 .modal {
     background: var(--bg-card);
     border-radius: 12px;
-    width: 100%%;
+    width: 100%;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
