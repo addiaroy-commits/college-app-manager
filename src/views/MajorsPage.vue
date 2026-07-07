@@ -30,7 +30,6 @@ const activeCategory = ref("All");
 const showForm = ref(false);
 const editId = ref<string | null>(null);
 const majorSearch = ref("");
-const showMajorDropdown = ref(false);
 const showCustomMajorForm = ref(false);
 const customMajorForm = ref({
     name: "",
@@ -79,7 +78,7 @@ const form = ref({
 
 function openForm(
     pick?: any,
-    preset?: { majorId: string; majorName: string; type?: string },
+    preset?: { majorId?: string; majorName?: string; type?: string },
 ) {
     if (pick) {
         editId.value = pick.id;

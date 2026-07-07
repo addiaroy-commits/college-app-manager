@@ -110,7 +110,7 @@ function finish() {
         <div class="onboard-bottom">
             <div class="onboard-dots">
                 <span
-                    v-for="(item, i) in steps"
+                    v-for="(_, i) in steps"
                     :key="i"
                     class="dot"
                     :class="{ active: i === step, done: i < step }"

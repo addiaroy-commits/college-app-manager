@@ -5,7 +5,7 @@ import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useBragStore } from "../stores/bragStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
-import { saveFile, loadFile, removeFile } from "../services/fileStorage";
+import { saveFile, loadFile } from "../services/fileStorage";
 
 const docStore = useDocumentStore();
 const collegeStore = useCollegeStore();

@@ -204,7 +204,7 @@ const themes: Record<ThemeName, { light: ThemeVars; dark: ThemeVars }> = {
   },
 };
 
-function apply(vars: Record<string, string>) {
+function apply(vars: Record<string, string> | ThemeVars) {
   Object.entries(vars).forEach(([k, v]) =>
     document.documentElement.style.setProperty(k, v),
   );

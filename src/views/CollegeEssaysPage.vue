@@ -17,8 +17,6 @@ const college = computed(() =>
 const showEditor = ref(false);
 const editingId = ref<string | null>(null);
 const essayContent = ref("");
-const showConfetti = ref(false);
-let confettiTimer: number | null = null;
 
 const form = ref({
     title: "",
@@ -44,18 +42,6 @@ function openAddEssay() {
         prompt: "",
         targetWordCount: 650,
         status: "Not Started",
-    };
-    showEditor.value = true;
-}
-
-function openEditEssay(essay: Essay) {
-    editingId.value = essay.id;
-    essayContent.value = essay.content;
-    form.value = {
-        title: essay.title,
-        prompt: essay.prompt,
-        targetWordCount: essay.targetWordCount,
-        status: essay.status,
     };
     showEditor.value = true;
 }
@@ -89,10 +75,6 @@ function saveEssay() {
     }
     showEditor.value = false;
     editingId.value = null;
-}
-
-function removeEssay(id: string) {
-    if (confirm("Delete this essay?")) essayStore.deleteEssay(id);
 }
 
 function statusColor(s: string) {

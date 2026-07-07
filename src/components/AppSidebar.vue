@@ -31,7 +31,11 @@ const themeOptions: { value: ThemeName; label: string }[] = [
 function changeTheme(t: ThemeName) {
     theme.setTheme(t);
     showThemes.value = false;
-    window.location.reload();
+    location.reload();
+}
+
+function doReload() {
+    location.reload();
 }
 </script>
 
@@ -55,7 +59,7 @@ function changeTheme(t: ThemeName) {
                 class="logout-btn"
                 @click="
                     user.logout();
-                    window.location.reload();
+                    doReload();
                 "
             >
                 👤 {{ user.username }} — Logout
@@ -87,7 +91,7 @@ function changeTheme(t: ThemeName) {
                 class="theme-toggle"
                 @click="
                     theme.toggle();
-                    window.location.reload();
+                    doReload();
                 "
             >
                 {{ theme.isDark ? "☀️ Light Mode" : "🌙 Dark Mode" }}
