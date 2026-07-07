@@ -1,0 +1,111 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-page: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --border-light: #f3f4f6;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --card-accent: rgba(139, 92, 246, 0.04);
+}
+
+[data-theme="dark"] {
+    --bg-page: #0f172a;
+    --bg-card: #1e293b;
+    --bg-input: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --border-light: #1e293b;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --card-accent: rgba(139, 92, 246, 0.08);
+}
+
+body {
+    font-family:
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: var(--bg-page);
+    transition:
+        background 0.3s,
+        color 0.3s;
+}
+
+h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+p {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+/* Global theme-aware classes */
+.btn-primary,
+.btn-add {
+    background: var(--primary) !important;
+}
+.btn-primary:hover,
+.btn-add:hover {
+    background: var(--primary-hover) !important;
+}
+.btn-save {
+    background: var(--btn-success) !important;
+}
+.btn-save:hover {
+    background: var(--btn-success-hover) !important;
+}
+.btn-db {
+    background: var(--btn-db) !important;
+}
+.btn-db:hover {
+    background: var(--btn-db-hover) !important;
+}
+
+/* Category badges */
+.category-badge.reach {
+    background: var(--badge-reach) !important;
+    color: var(--badge-reach-text) !important;
+}
+.category-badge.target {
+    background: var(--badge-target) !important;
+    color: var(--badge-target-text) !important;
+}
+.category-badge.safety {
+    background: var(--badge-safety) !important;
+    color: var(--badge-safety-text) !important;
+}
+
+/* Tinted cards */
+.college-card,
+.college-card-it,
+.essay-card,
+.cost-card,
+.goal-card,
+.item-card,
+.doc-card,
+.summary-card,
+.panel,
+.form-card,
+.db-modal,
+.common-app-card {
+    background: linear-gradient(
+        135deg,
+        var(--bg-card) 0%,
+        var(--card-accent, var(--bg-card)) 100%
+    ) !important;
+}
