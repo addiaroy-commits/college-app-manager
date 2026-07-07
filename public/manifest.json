@@ -1,0 +1,18 @@
+{
+  "name": "CogApp — College Application Manager",
+  "short_name": "CogApp",
+  "description": "Your all-in-one college application organizer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f7ff",
+  "theme_color": "#1e1b4b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
