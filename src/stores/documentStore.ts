@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { getUserKey } from "./userKey";
+import { removeFile } from "../services/fileStorage";
 
 export interface Document {
   id: string;
@@ -34,6 +35,7 @@ export const useDocumentStore = defineStore("documents", () => {
   function deleteDocument(id: string) {
     documents.value = documents.value.filter((d) => d.id !== id);
     save();
+    removeFile(id).catch(() => {});
   }
 
   return { documents, addDocument, deleteDocument };

@@ -5,6 +5,7 @@ import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useBragStore } from "../stores/bragStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
+import { saveFile, loadFile, removeFile } from "../services/fileStorage";
 
 const docStore = useDocumentStore();
 const collegeStore = useCollegeStore();
@@ -220,8 +221,19 @@ function saveDocument() {
     uploading.value = true;
     const file = input!.files![0];
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
         const base64 = (reader.result as string).split(",")[1];
+        const docId = editingId.value || crypto.randomUUID();
+
+        // Store file in IndexedDB
+        await saveFile(
+            docId,
+            base64,
+            file.type,
+            form.value.fileName || file.name,
+        );
+
+        // Store metadata in localStorage (fileData stripped — data lives in IndexedDB)
         if (editingId.value) {
             const idx = docStore.documents.findIndex(
                 (d) => d.id === editingId.value,
@@ -233,7 +245,7 @@ function saveDocument() {
                     description: form.value.description.trim(),
                     type: form.value.type,
                     collegeIds: [...form.value.selectedColleges],
-                    fileData: base64,
+                    fileData: "",
                     fileType: file.type,
                     dateAdded: docStore.documents[idx].dateAdded,
                 };
@@ -244,12 +256,12 @@ function saveDocument() {
             }
         } else {
             docStore.addDocument({
-                id: crypto.randomUUID(),
+                id: docId,
                 fileName: form.value.fileName || file.name,
                 description: form.value.description.trim(),
                 type: form.value.type,
                 collegeIds: [...form.value.selectedColleges],
-                fileData: base64,
+                fileData: "",
                 fileType: file.type,
                 dateAdded: new Date().toISOString(),
             });
@@ -265,9 +277,19 @@ function openPreview(doc: UnifiedDoc) {
     previewDoc.value = doc;
 }
 
-function downloadDocument(doc: UnifiedDoc) {
+async function downloadDocument(doc: UnifiedDoc) {
+    let data = doc.fileData;
+    // If fileData is empty, load from IndexedDB
+    if (!data || data.length < 100) {
+        const stored = await loadFile(doc.id);
+        if (stored) data = stored.data;
+    }
+    if (!data) {
+        alert("File data not available.");
+        return;
+    }
     const a = document.createElement("a");
-    a.href = `data:${doc.fileType};base64,${doc.fileData}`;
+    a.href = `data:${doc.fileType};base64,${data}`;
     a.download = doc.fileName;
     a.click();
 }
