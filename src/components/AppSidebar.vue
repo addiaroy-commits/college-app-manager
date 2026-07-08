@@ -3,6 +3,10 @@ import { ref } from "vue";
 import { useRoute } from "vue-router";
 import { useThemeStore, type ThemeName } from "../stores/themeStore";
 import { useUserStore } from "../stores/userStore";
+
+defineProps<{ open: boolean }>();
+const emit = defineEmits<{ close: [] }>();
+
 const user = useUserStore();
 const route = useRoute();
 const theme = useThemeStore();
@@ -33,16 +37,19 @@ function changeTheme(t: ThemeName) {
     showThemes.value = false;
     location.reload();
 }
-
 function doReload() {
     location.reload();
+}
+function navClick() {
+    emit("close");
 }
 </script>
 
 <template>
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ open: open }">
         <div class="sidebar-header">
             <h1 class="app-name">CogApp</h1>
+            <button class="sidebar-close" @click="emit('close')">✕</button>
         </div>
         <nav class="sidebar-nav">
             <router-link
@@ -51,6 +58,7 @@ function doReload() {
                 :to="item.path"
                 class="nav-link"
                 :class="{ active: route.name === item.name }"
+                @click="navClick()"
                 >{{ item.label }}</router-link
             >
         </nav>
@@ -98,6 +106,7 @@ function doReload() {
             </button>
         </div>
     </aside>
+    <div v-if="open" class="sidebar-overlay" @click="emit('close')"></div>
 </template>
 
 <style scoped>
@@ -108,11 +117,17 @@ function doReload() {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    transition: background 0.3s;
+    transition:
+        background 0.3s,
+        transform 0.25s;
+    flex-shrink: 0;
 }
 .sidebar-header {
     padding: 24px 20px 32px;
     border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 .app-name {
     font-size: 24px;
@@ -121,12 +136,22 @@ function doReload() {
     color: var(--sidebar-text);
     letter-spacing: -0.5px;
 }
+.sidebar-close {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--sidebar-text);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
 .sidebar-nav {
     display: flex;
     flex-direction: column;
     padding: 12px 8px;
     gap: 4px;
     flex: 1;
+    overflow-y: auto;
 }
 .nav-link {
     display: block;
@@ -150,7 +175,6 @@ function doReload() {
     padding: 12px;
     border-top: 1px solid rgba(128, 128, 128, 0.15);
 }
-
 .logout-btn {
     width: 100%;
     padding: 8px;
@@ -166,7 +190,6 @@ function doReload() {
 .logout-btn:hover {
     background: rgba(255, 0, 0, 0.12);
 }
-
 .theme-dropdown {
     position: relative;
     margin-bottom: 8px;
@@ -219,7 +242,6 @@ function doReload() {
     color: var(--sidebar-text);
     font-weight: 600;
 }
-
 .theme-toggle {
     width: 100%;
     padding: 8px;
@@ -233,5 +255,35 @@ function doReload() {
 }
 .theme-toggle:hover {
     background: rgba(128, 128, 128, 0.15);
+}
+
+/* Overlay behind sidebar on mobile */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 999;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .sidebar-close {
+        display: block;
+    }
+    .sidebar-overlay {
+        display: block;
+    }
 }
 </style>
