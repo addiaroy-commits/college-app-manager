@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useEssayStore, type Essay } from "../stores/essayStore";
 import { useCollegeStore } from "../stores/collegeStore";
 import { getUserKey } from "../stores/userKey";
+import { showToast } from "../composables/useToast";
 
 const router = useRouter();
 const essayStore = useEssayStore();
@@ -276,7 +277,14 @@ function saveEssay() {
     editingId.value = null;
 }
 function removeEssay(id: string) {
-    if (confirm("Delete this essay?")) essayStore.deleteEssay(id);
+    const essay = essayStore.essays.find((e) => e.id === id);
+    if (!essay) return;
+    const snapshot = { ...essay };
+    essayStore.deleteEssay(id);
+    showToast(`"${snapshot.title}" deleted`, () => {
+        essayStore.addEssay(snapshot);
+        showToast(`"${snapshot.title}" restored`);
+    });
 }
 function statusColor(s: string) {
     if (s === "Done") return "status-done";
@@ -806,36 +814,147 @@ function statusColor(s: string) {
                 </div>
                 <div class="modal-body">
                     <!-- Scholarship Essays -->
-                    <h4 style="margin:0 0 8px;font-size:14px;color:var(--text-primary);">🎓 Scholarship Essays</h4>
-                    <p v-if="scholarshipOtherEssays.filter(e=>!e.essayType||e.essayType==='scholarship').length===0" class="empty-text">No scholarship essays yet.</p>
-                    <div v-for="essay in scholarshipOtherEssays.filter(e=>!e.essayType||e.essayType==='scholarship')" :key="essay.id" class="essay-row">
+                    <h4
+                        style="
+                            margin: 0 0 8px;
+                            font-size: 14px;
+                            color: var(--text-primary);
+                        "
+                    >
+                        🎓 Scholarship Essays
+                    </h4>
+                    <p
+                        v-if="
+                            scholarshipOtherEssays.filter(
+                                (e) =>
+                                    !e.essayType ||
+                                    e.essayType === 'scholarship',
+                            ).length === 0
+                        "
+                        class="empty-text"
+                    >
+                        No scholarship essays yet.
+                    </p>
+                    <div
+                        v-for="essay in scholarshipOtherEssays.filter(
+                            (e) =>
+                                !e.essayType || e.essayType === 'scholarship',
+                        )"
+                        :key="essay.id"
+                        class="essay-row"
+                    >
                         <div class="essay-info">
                             <div class="essay-title">{{ essay.title }}</div>
                             <div class="essay-meta">
-                                📝 {{ essay.currentWordCount }} / {{ essay.targetWordCount }} words<span v-if="essay.prompt"> · 💬 {{ essay.prompt.slice(0, 35) }}{{ essay.prompt.length > 35 ? "..." : "" }}</span>
+                                📝 {{ essay.currentWordCount }} /
+                                {{ essay.targetWordCount }} words<span
+                                    v-if="essay.prompt"
+                                >
+                                    · 💬 {{ essay.prompt.slice(0, 35)
+                                    }}{{
+                                        essay.prompt.length > 35 ? "..." : ""
+                                    }}</span
+                                >
                             </div>
                         </div>
-                        <span class="status-badge" :class="statusColor(essay.status)">{{ essay.status }}</span>
-                        <button class="mini-view-btn" @click="router.push('/essays/college/scholarship-other/essay/' + essay.id); showScholarshipOther = false;">View →</button>
-                        <button class="mini-del-btn" @click.stop="removeEssay(essay.id)" title="Delete">🗑️</button>
+                        <span
+                            class="status-badge"
+                            :class="statusColor(essay.status)"
+                            >{{ essay.status }}</span
+                        >
+                        <button
+                            class="mini-view-btn"
+                            @click="
+                                router.push(
+                                    '/essays/college/scholarship-other/essay/' +
+                                        essay.id,
+                                );
+                                showScholarshipOther = false;
+                            "
+                        >
+                            View →
+                        </button>
+                        <button
+                            class="mini-del-btn"
+                            @click.stop="removeEssay(essay.id)"
+                            title="Delete"
+                        >
+                            🗑️
+                        </button>
                     </div>
 
                     <!-- Other Essays -->
-                    <h4 style="margin:16px 0 8px;font-size:14px;color:var(--text-primary);">📝 Other Essays</h4>
-                    <p v-if="scholarshipOtherEssays.filter(e=>e.essayType&&e.essayType!=='scholarship').length===0" class="empty-text">No other essays yet.</p>
-                    <div v-for="essay in scholarshipOtherEssays.filter(e=>e.essayType&&e.essayType!=='scholarship')" :key="essay.id" class="essay-row">
+                    <h4
+                        style="
+                            margin: 16px 0 8px;
+                            font-size: 14px;
+                            color: var(--text-primary);
+                        "
+                    >
+                        📝 Other Essays
+                    </h4>
+                    <p
+                        v-if="
+                            scholarshipOtherEssays.filter(
+                                (e) =>
+                                    e.essayType &&
+                                    e.essayType !== 'scholarship',
+                            ).length === 0
+                        "
+                        class="empty-text"
+                    >
+                        No other essays yet.
+                    </p>
+                    <div
+                        v-for="essay in scholarshipOtherEssays.filter(
+                            (e) => e.essayType && e.essayType !== 'scholarship',
+                        )"
+                        :key="essay.id"
+                        class="essay-row"
+                    >
                         <div class="essay-info">
                             <div class="essay-title">
                                 {{ essay.title }}
-                                <span class="so-type-badge so-other">{{ essay.essayType }}</span>
+                                <span class="so-type-badge so-other">{{
+                                    essay.essayType
+                                }}</span>
                             </div>
                             <div class="essay-meta">
-                                📝 {{ essay.currentWordCount }} / {{ essay.targetWordCount }} words<span v-if="essay.prompt"> · 💬 {{ essay.prompt.slice(0, 35) }}{{ essay.prompt.length > 35 ? "..." : "" }}</span>
+                                📝 {{ essay.currentWordCount }} /
+                                {{ essay.targetWordCount }} words<span
+                                    v-if="essay.prompt"
+                                >
+                                    · 💬 {{ essay.prompt.slice(0, 35)
+                                    }}{{
+                                        essay.prompt.length > 35 ? "..." : ""
+                                    }}</span
+                                >
                             </div>
                         </div>
-                        <span class="status-badge" :class="statusColor(essay.status)">{{ essay.status }}</span>
-                        <button class="mini-view-btn" @click="router.push('/essays/college/scholarship-other/essay/' + essay.id); showScholarshipOther = false;">View →</button>
-                        <button class="mini-del-btn" @click.stop="removeEssay(essay.id)" title="Delete">🗑️</button>
+                        <span
+                            class="status-badge"
+                            :class="statusColor(essay.status)"
+                            >{{ essay.status }}</span
+                        >
+                        <button
+                            class="mini-view-btn"
+                            @click="
+                                router.push(
+                                    '/essays/college/scholarship-other/essay/' +
+                                        essay.id,
+                                );
+                                showScholarshipOther = false;
+                            "
+                        >
+                            View →
+                        </button>
+                        <button
+                            class="mini-del-btn"
+                            @click.stop="removeEssay(essay.id)"
+                            title="Delete"
+                        >
+                            🗑️
+                        </button>
                     </div>
                 </div>
                 <div

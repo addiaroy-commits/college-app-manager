@@ -27,6 +27,7 @@ const showAI = ref(false);
 const showConfetti = ref(false);
 let confettiTimer: number | null = null;
 const fileInput = ref<HTMLInputElement | null>(null);
+void fileInput; // used as template ref
 const attachedFile = ref<{ name: string; data: string; type: string } | null>(
     null,
 );
