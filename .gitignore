@@ -5,6 +5,9 @@ node_modules
 dist
 dist-ssr
 
+# Compiled JS duplicates in src
+src/**/*.js
+
 # Environment files
 .env
 .env.local
