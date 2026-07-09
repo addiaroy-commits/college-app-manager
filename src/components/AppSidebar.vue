@@ -28,14 +28,11 @@ const themeOptions: { value: ThemeName; label: string }[] = [
     { value: "rose", label: "💗 Rose" },
 ];
 
+function doReload() { location.reload(); }
 function changeTheme(t: ThemeName) {
     theme.setTheme(t);
     showThemes.value = false;
-    location.reload();
-}
-
-function doReload() {
-    location.reload();
+    doReload();
 }
 </script>
 

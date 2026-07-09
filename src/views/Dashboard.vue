@@ -6,6 +6,8 @@ import { useEssayStore } from "../stores/essayStore";
 import { useDocumentStore } from "../stores/documentStore";
 import { useUserStore } from "../stores/userStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
+import { exportAllData, importAllData } from "../services/dataBackup";
+import { showToast } from "../composables/useToast";
 
 const router = useRouter();
 const collegeStore = useCollegeStore();
@@ -170,6 +172,32 @@ function appTypeClass(type: string) {
 function navigateTo(path: string) {
     router.push(path);
 }
+
+const backupInput = ref<HTMLInputElement | null>(null);
+
+function handleExport() {
+    exportAllData();
+    showToast("✅ Backup downloaded");
+}
+
+function handleImportClick() {
+    backupInput.value?.click();
+}
+
+async function handleImport(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+        const count = await importAllData(file);
+        showToast(`✅ Restored ${count} data keys — refresh to see changes`);
+        setTimeout(() => location.reload(), 1500);
+    } catch (e: any) {
+        showToast(`❌ Import failed: ${e.message}`);
+    }
+    input.value = "";
+}
+void backupInput;
 </script>
 
 <template>
@@ -335,6 +363,17 @@ function navigateTo(path: string) {
                 <span class="doc-date">{{
                     new Date(doc.dateAdded).toLocaleDateString()
                 }}</span>
+            </div>
+        </div>
+
+        <!-- Backup & Restore -->
+        <div class="panel" style="margin-top:20px;">
+            <h3>💾 Backup & Restore</h3>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Export all your data as a JSON file, or restore from a previous backup.</p>
+            <div style="display:flex;gap:8px;">
+                <button class="quick-btn" @click="handleExport">📥 Export Backup</button>
+                <button class="quick-btn" @click="handleImportClick">📤 Restore Backup</button>
+                <input ref="backupInput" type="file" accept=".json" style="display:none;" @change="handleImport" />
             </div>
         </div>
     </div>

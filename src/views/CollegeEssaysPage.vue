@@ -17,7 +17,6 @@ const college = computed(() =>
 const showEditor = ref(false);
 const editingId = ref<string | null>(null);
 const essayContent = ref("");
-
 const form = ref({
     title: "",
     prompt: "",
@@ -45,6 +44,8 @@ function openAddEssay() {
     };
     showEditor.value = true;
 }
+
+
 
 function saveEssay() {
     if (!form.value.title.trim()) return;
@@ -76,6 +77,8 @@ function saveEssay() {
     showEditor.value = false;
     editingId.value = null;
 }
+
+
 
 function statusColor(s: string) {
     if (s === "Done") return "status-done";

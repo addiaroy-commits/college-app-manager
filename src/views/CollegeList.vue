@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { useCollegeStore, type College } from "../stores/collegeStore";
+import { useCollegeStore } from "../stores/collegeStore";
+import type { College } from "../stores/collegeStore";
+import { showToast } from "../composables/useToast";
 
 const store = useCollegeStore();
 const showForm = ref(false);
@@ -80,7 +82,7 @@ function openAddForm() {
     showForm.value = true;
 }
 
-function openEditForm(college: College) {
+function openEditForm(college: any) {
     editingId.value = college.id;
     form.value = {
         name: college.name,
@@ -105,7 +107,7 @@ function saveCollege() {
             return;
         }
     }
-    const college: College = {
+    const college: any = {
         id: editingId.value ?? crypto.randomUUID(),
         name: form.value.name.trim(),
         category: form.value.category,
@@ -124,8 +126,14 @@ function saveCollege() {
 }
 
 function removeCollege(id: string) {
-    if (confirm("Are you sure you want to delete this college?"))
-        store.deleteCollege(id);
+    const college = store.colleges.find((c) => c.id === id);
+    if (!college) return;
+    const snapshot = { ...college };
+    store.deleteCollege(id);
+    showToast(`"${snapshot.name}" deleted`, () => {
+        store.addCollege(snapshot);
+        showToast(`"${snapshot.name}" restored`);
+    });
 }
 
 function importCollege(college: any) {
@@ -159,7 +167,7 @@ function importCollege(college: any) {
     showForm.value = true;
 }
 
-function openView(college: College) {
+function openView(college: any) {
     selectedCollege.value = college;
 }
 </script>

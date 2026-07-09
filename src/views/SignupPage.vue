@@ -11,7 +11,7 @@ const confirmPassword = ref("");
 const error = ref("");
 const success = ref("");
 
-function doSignup() {
+async function doSignup() {
     error.value = "";
     success.value = "";
 
@@ -20,16 +20,19 @@ function doSignup() {
         return;
     }
 
-    const result = userStore.signup(username.value, password.value);
-    if (result) {
-        error.value = result;
-    } else {
-        success.value = "Account created! Redirecting to login...";
-        // Log user in automatically
-        userStore.login(username.value, password.value);
-        setTimeout(() => {
-            router.push("/onboarding");
-        }, 1500);
+    try {
+        const result = await userStore.signup(username.value, password.value);
+        if (result) {
+            error.value = result;
+        } else {
+            success.value = "Account created! Logging you in...";
+            await userStore.login(username.value, password.value);
+            setTimeout(() => {
+                router.push("/onboarding");
+            }, 1500);
+        }
+    } catch (e: any) {
+        error.value = e.message || "Signup failed";
     }
 }
 </script>

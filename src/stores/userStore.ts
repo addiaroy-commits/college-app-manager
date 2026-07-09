@@ -1,100 +1,82 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-
-interface User {
-  id: string;
-  username: string;
-  password: string;
-  createdAt: string;
-}
+import {
+  loginUser,
+  signupUser,
+  logoutUser,
+  onAuthChange,
+} from "../services/firebaseService";
 
 export const useUserStore = defineStore("user", () => {
-  const users = ref<User[]>([]);
-  const currentUser = ref<User | null>(null);
+  const currentUser = ref<{ id: string; username: string } | null>(null);
+  const isLoading = ref(true);
 
-  // Load users
-  const savedUsers = localStorage.getItem("applywise-users");
-  if (savedUsers) {
-    users.value = JSON.parse(savedUsers);
+  // Listen for Firebase auth changes
+  onAuthChange((firebaseUser) => {
+    if (firebaseUser) {
+      const uid = firebaseUser.email?.split("@")[0] || firebaseUser.uid;
+      currentUser.value = { id: uid, username: uid };
+      localStorage.setItem("applywise-session", uid);
+    } else {
+      currentUser.value = null;
+      localStorage.removeItem("applywise-session");
+    }
+    isLoading.value = false;
+  });
+
+  // Check legacy localStorage session while Firebase loads
+  const saved = localStorage.getItem("applywise-session");
+  if (saved) {
+    currentUser.value = { id: saved, username: saved };
+    isLoading.value = false;
   }
 
-  // Load logged in user
-  const savedSession = localStorage.getItem("applywise-session");
-  if (savedSession) {
-    currentUser.value = users.value.find((u) => u.id === savedSession) ?? null;
-  }
-
-  function saveUsers() {
-    localStorage.setItem("applywise-users", JSON.stringify(users.value));
-  }
-
-  const isLoggedIn = computed(() => currentUser.value !== null);
+  const isLoggedIn = computed(
+    () => currentUser.value !== null && !isLoading.value,
+  );
   const username = computed(() => currentUser.value?.username ?? "");
 
-  function signup(username: string, password: string): string | null {
+  async function signup(
+    username: string,
+    password: string,
+  ): Promise<string | null> {
     if (!username.trim() || !password.trim()) return "Please fill all fields";
     if (password.length < 4) return "Password must be at least 4 characters";
-
-    const exists = users.value.find(
-      (u) => u.username.toLowerCase() === username.toLowerCase(),
-    );
-    if (exists) return "Username already taken";
-
-    const user: User = {
-      id: crypto.randomUUID(),
-      username: username.trim(),
-      password: password,
-      createdAt: new Date().toISOString(),
-    };
-    users.value.push(user);
-    saveUsers();
-    return null;
-  }
-
-  function login(username: string, password: string): string | null {
-    const user = users.value.find(
-      (u) =>
-        u.username.toLowerCase() === username.toLowerCase() &&
-        u.password === password,
-    );
-    if (!user) return "Invalid username or password";
-
-    currentUser.value = user;
-    localStorage.setItem("applywise-session", user.id);
-
-    // Migrate old shared data ONCE — only on the very first login ever
-    if (!localStorage.getItem("applywise-migrated")) {
-      const oldKeys = [
-        "colleges",
-        "essays",
-        "documents",
-        "goals",
-        "essay-targets",
-      ];
-      oldKeys.forEach((k) => {
-        const oldData = localStorage.getItem(`applywise-${k}`);
-        if (oldData) {
-          localStorage.setItem(`user-${user.id}-${k}`, oldData);
-          localStorage.removeItem(`applywise-${k}`);
-        }
-      });
-      localStorage.setItem("applywise-migrated", "true");
+    try {
+      await signupUser(username.trim(), password);
+      return null;
+    } catch (e: any) {
+      if (e.code === "auth/email-already-in-use")
+        return "Username already taken";
+      return e.message || "Signup failed";
     }
-
-    return null;
   }
 
-  function logout() {
+  async function login(
+    username: string,
+    password: string,
+  ): Promise<string | null> {
+    try {
+      await loginUser(username.trim(), password);
+      return null;
+    } catch (e: any) {
+      if (e.code === "auth/invalid-credential")
+        return "Invalid username or password";
+      return e.message || "Login failed";
+    }
+  }
+
+  async function logout() {
+    await logoutUser();
     currentUser.value = null;
     localStorage.removeItem("applywise-session");
-    window.location.reload();
   }
 
   return {
-    users,
     currentUser,
     isLoggedIn,
     username,
+    isLoading,
     signup,
     login,
     logout,

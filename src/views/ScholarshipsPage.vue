@@ -17,6 +17,7 @@ import {
     getMatchBadges,
     getScamWarnings,
 } from "../services/scholarshipMatcher";
+import { showToast } from "../composables/useToast";
 
 const store = useScholarshipStore();
 const docStore = useDocumentStore();
@@ -471,10 +472,15 @@ function saveScholarship() {
 }
 
 function deleteScholarship(id: string) {
-    if (confirm("Delete this scholarship?")) {
-        store.deleteScholarship(id);
-        showDetail.value = false;
-    }
+    const s = store.scholarships.find((x) => x.id === id);
+    if (!s) return;
+    const snapshot = JSON.parse(JSON.stringify(s));
+    store.deleteScholarship(id);
+    showDetail.value = false;
+    showToast(`"${snapshot.name}" deleted`, () => {
+        store.addScholarship(snapshot);
+        showToast(`"${snapshot.name}" restored`);
+    });
 }
 
 // ── Quick Actions ──

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppSidebar from "./components/AppSidebar.vue";
+import ToastContainer from "./components/ToastContainer.vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
@@ -23,6 +24,7 @@ const route = useRoute();
             </router-view>
         </main>
     </div>
+    <ToastContainer />
 </template>
 
 <style scoped>
