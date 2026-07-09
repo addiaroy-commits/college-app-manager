@@ -9,16 +9,20 @@ const password = ref("");
 const error = ref("");
 const loading = ref(false);
 
-function doLogin() {
+async function doLogin() {
     error.value = "";
     loading.value = true;
-
-    const result = userStore.login(username.value, password.value);
-    if (result) {
-        error.value = result;
+    try {
+        const result = await userStore.login(username.value, password.value);
+        if (result) {
+            error.value = result;
+            loading.value = false;
+        } else {
+            window.location.href = "/";
+        }
+    } catch (e: any) {
+        error.value = e.message || "Login failed";
         loading.value = false;
-    } else {
-        window.location.href = "/";
     }
 }
 </script>
