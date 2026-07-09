@@ -98,9 +98,9 @@ onAuthChange(async (user) => {
     // Push local data to cloud (in case this device has newer data)
     await pushAllToCloud();
 
-    // Periodic sync every 15 seconds
+    // Periodic sync every 5 minutes (not 15 seconds — saves quota)
     if (syncInterval) clearInterval(syncInterval);
-    syncInterval = window.setInterval(pushAllToCloud, 15000);
+    syncInterval = window.setInterval(pushAllToCloud, 5 * 60 * 1000);
 
     // Start watching localStorage changes
     watchLocalChanges();
