@@ -61,6 +61,11 @@ const router = createRouter({
       component: () => import("../views/ApplicationCommandCenter.vue"),
     },
     {
+      path: "/research",
+      name: "research",
+      component: () => import("../views/CollegeResearchHub.vue"),
+    },
+    {
       path: "/essays/college/:collegeId",
       name: "college-essays",
       component: () => import("../views/CollegeEssaysPage.vue"),

@@ -31,6 +31,7 @@ const SYNC_KEYS = [
   "sat-act",
   "essay-targets",
   "command-center",
+  "college-research",
 ];
 
 let currentUserId: string | null = null;

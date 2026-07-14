@@ -43,6 +43,13 @@ CogApp is a Vue 3, TypeScript, Vite single-page app for managing college applica
 - Default checklist dates inherit the College List deadline; only explicit overrides are stored separately.
 - The `command-center` user key is included in Firestore sync and JSON backup/restore.
 
+## College Research Hub
+
+- `researchStore.ts` owns personal fit ratings, weights, comparison selections, research notes, and visit/interview records.
+- `CollegeResearchHub.vue` provides Compare, Fit & Rank, Research Notes, and Visits views.
+- College deadlines and fees remain owned by College List; net-cost information remains owned by Cost Tracker.
+- The `college-research` user key is included in Firestore sync and JSON backup/restore.
+
 ## Key Services
 
 | File | What It Does |

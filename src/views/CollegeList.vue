@@ -3,12 +3,19 @@ import { ref, computed, watch } from "vue";
 import { useCollegeStore } from "../stores/collegeStore";
 import type { College } from "../stores/collegeStore";
 import { showToast } from "../composables/useToast";
+import {
+  calculateFitScore,
+  useResearchStore,
+} from "../stores/researchStore";
 
 const store = useCollegeStore();
+const researchStore = useResearchStore();
+researchStore.ensureProfiles(store.colleges);
 const showForm = ref(false);
 const editingId = ref<string | null>(null);
 const searchQuery = ref("");
 const activeFilter = ref("All");
+const sortBy = ref<"added" | "fit">("added");
 const selectedCollege = ref<College | null>(null);
 const showDatabase = ref(false);
 const dbSearch = ref("");
@@ -27,14 +34,46 @@ const form = ref({
 });
 
 const filteredColleges = computed(() => {
-    let list = store.colleges;
+    let list = [...store.colleges];
     if (activeFilter.value !== "All")
         list = list.filter((c) => c.category === activeFilter.value);
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
         list = list.filter((c) => c.name.toLowerCase().includes(q));
     }
+    if (sortBy.value === "fit") {
+        list.sort(
+            (a, b) =>
+                (fitRankByCollege.value[b.id]?.score || 0) -
+                    (fitRankByCollege.value[a.id]?.score || 0) ||
+                a.name.localeCompare(b.name),
+        );
+    }
     return list;
+});
+
+const fitRankByCollege = computed(() => {
+    const ranked = store.colleges
+        .map((college) => {
+            const profile = researchStore.profiles.find(
+                (item) => item.collegeId === college.id,
+            );
+            return {
+                collegeId: college.id,
+                score: profile
+                    ? calculateFitScore(profile, researchStore.weights)
+                    : 0,
+            };
+        })
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score);
+    return ranked.reduce<Record<string, { rank: number; score: number }>>(
+        (map, entry, index) => {
+            map[entry.collegeId] = { rank: index + 1, score: entry.score };
+            return map;
+        },
+        {},
+    );
 });
 
 async function searchColleges() {
@@ -204,6 +243,10 @@ function openView(college: any) {
                     {{ f }}
                 </button>
             </div>
+            <select v-model="sortBy" class="sort-select" aria-label="College sort order">
+                <option value="added">Sort: Added order</option>
+                <option value="fit">Sort: Best fit</option>
+            </select>
         </div>
 
         <!-- Add / Edit Form -->
@@ -335,7 +378,16 @@ function openView(college: any) {
                 class="college-card"
             >
                 <div class="college-info">
-                    <div class="college-name">{{ college.name }}</div>
+                    <div class="college-name-row">
+                        <div class="college-name">{{ college.name }}</div>
+                        <span
+                            v-if="fitRankByCollege[college.id]"
+                            class="fit-rank"
+                        >
+                            #{{ fitRankByCollege[college.id].rank }} fit ·
+                            {{ fitRankByCollege[college.id].score }}
+                        </span>
+                    </div>
                     <div class="college-meta">
                         <span v-if="college.deadline"
                             >📅 {{ college.deadline }}</span
@@ -357,6 +409,12 @@ function openView(college: any) {
                 <button class="btn-view" @click="openView(college)">
                     View
                 </button>
+                <router-link
+                    :to="{ path: '/research', query: { tab: 'notes', college: college.id } }"
+                    class="btn-research"
+                >
+                    Research
+                </router-link>
             </div>
         </div>
 
@@ -507,6 +565,15 @@ function openView(college: any) {
     display: flex;
     gap: 6px;
 }
+.sort-select {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+}
 .filter-btn {
     padding: 8px 16px;
     border: 1px solid var(--border-color);
@@ -630,10 +697,24 @@ function openView(college: any) {
 .college-info {
     flex: 1;
 }
+.college-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 .college-name {
     font-weight: 600;
     font-size: 16px;
     color: var(--text-primary);
+}
+.fit-rank {
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 700;
 }
 .college-meta {
     font-size: 13px;
@@ -687,6 +768,20 @@ function openView(college: any) {
 }
 .btn-view:hover {
     background: var(--border-color);
+}
+.btn-research {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.btn-research:hover {
+    border-color: var(--accent-border);
+    background: var(--primary-light);
 }
 
 .detail-overlay {
@@ -871,5 +966,27 @@ function openView(college: any) {
     font-size: 14px;
     text-align: center;
     padding: 30px 0;
+}
+
+@media (max-width: 720px) {
+    .page-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .header-buttons,
+    .quick-actions {
+        flex-wrap: wrap;
+    }
+
+    .college-card {
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .college-info {
+        flex-basis: 100%;
+    }
 }
 </style>

@@ -17,6 +17,7 @@ const navSections = [
         label: "Applications",
         items: [
             { path: "/colleges", label: "🏫 College List", name: "colleges" },
+            { path: "/research", label: "🔎 Research & Compare", name: "research" },
             { path: "/applications", label: "🗂️ Applications", name: "applications" },
             { path: "/essays", label: "✍️ Essays", name: "essays" },
         ],

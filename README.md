@@ -6,6 +6,7 @@ Your all-in-one college application organizer. Every college, every essay, every
 
 - **Dashboard** — Summary cards and one compact agenda for the closest application, task, recommendation, and scholarship deadlines
 - **College List** — Search 7,000+ US colleges, categorize (Reach/Target/Safety), set deadlines (ED/EA/RD)
+- **Research & Compare** — Side-by-side college comparison, weighted fit scoring, automatic rankings, research notes, and visit/interview records
 - **Application Command Center** — Per-college checklists, application statuses, linked tasks, recommendation letters, and one combined deadline calendar
 - **Majors & Minors** — Browse 100+ majors, rank top 3 picks, add custom majors
 - **Brag Sheet** — SAT/ACT scores with superscore, GPA with selectable scales, AP scores, clubs, sports, awards, volunteering, skills, family
@@ -70,6 +71,7 @@ src/
 - [x] Firebase login and cloud data sync
 - [x] Export/Import backups (JSON)
 - [x] Application command center with checklists, tasks, recommendations, reminders, and calendar
+- [x] College research, comparison, fit scoring, ranking, and visit tracker
 - [ ] AI counselor with real API integration
 - [ ] Calendar improvements (drag & drop, recurring tasks)
 - [ ] CSV export/import

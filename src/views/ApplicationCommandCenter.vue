@@ -5,6 +5,7 @@ import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useDocumentStore } from "../stores/documentStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
+import { useResearchStore } from "../stores/researchStore";
 import {
   useApplicationStore,
   type ApplicationChecklistItem,
@@ -32,7 +33,8 @@ interface CalendarEvent {
     | "checklist"
     | "task"
     | "recommendation"
-    | "scholarship";
+    | "scholarship"
+    | "visit";
 }
 
 const router = useRouter();
@@ -41,6 +43,7 @@ const collegeStore = useCollegeStore();
 const essayStore = useEssayStore();
 const documentStore = useDocumentStore();
 const scholarshipStore = useScholarshipStore();
+const researchStore = useResearchStore();
 const store = useApplicationStore();
 store.ensureApplications(collegeStore.colleges);
 
@@ -714,6 +717,14 @@ const eventsByDate = computed(() => {
       });
     }
   }
+  for (const visit of researchStore.visits) {
+    add({
+      id: `visit-${visit.id}`,
+      date: visit.date,
+      title: `${collegeName(visit.collegeId)}: ${visit.type}`,
+      kind: "visit",
+    });
+  }
   return map;
 });
 
@@ -1345,6 +1356,7 @@ function nextMonth() {
         <span><i class="event-dot task"></i> Tasks</span>
         <span><i class="event-dot recommendation"></i> Recommendations</span>
         <span><i class="event-dot scholarship"></i> Scholarships</span>
+        <span><i class="event-dot visit"></i> Visits & interviews</span>
       </div>
     </template>
   </div>
@@ -2435,6 +2447,11 @@ textarea {
   color: #6d28d9;
 }
 
+.calendar-event.visit {
+  background: #fce7f3;
+  color: #be185d;
+}
+
 .calendar-day small {
   color: var(--text-secondary);
   font-size: 9px;
@@ -2485,6 +2502,10 @@ textarea {
 
 .event-dot.scholarship {
   background: #7c3aed;
+}
+
+.event-dot.visit {
+  background: #db2777;
 }
 
 .calendar-legend {

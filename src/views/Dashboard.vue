@@ -7,6 +7,7 @@ import { useDocumentStore } from "../stores/documentStore";
 import { useUserStore } from "../stores/userStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
 import { useApplicationStore } from "../stores/applicationStore";
+import { useResearchStore } from "../stores/researchStore";
 import { exportAllData, importAllData } from "../services/dataBackup";
 import { showToast } from "../composables/useToast";
 
@@ -17,6 +18,7 @@ const docStore = useDocumentStore();
 const userStore = useUserStore();
 const scholarshipStore = useScholarshipStore();
 const applicationStore = useApplicationStore();
+const researchStore = useResearchStore();
 applicationStore.ensureApplications(collegeStore.colleges);
 
 const collegeStats = computed(() => ({
@@ -114,11 +116,28 @@ const upcomingDeadlines = computed(() => {
             type: "recommendation" as const,
             meta: recommendation.role || "Recommendation",
         }));
+    const visitDates = researchStore.visits
+        .filter(
+            (visit) =>
+                visit.date &&
+                new Date(`${visit.date}T00:00:00`) >= today,
+        )
+        .map((visit) => ({
+            name: `${
+                collegeStore.colleges.find(
+                    (college) => college.id === visit.collegeId,
+                )?.name || "College"
+            }: ${visit.type}`,
+            deadline: visit.date,
+            type: "visit" as const,
+            meta: visit.contact || "Visit or interview",
+        }));
     return [
         ...collegeDeadlines,
         ...scholarshipDeadlines,
         ...taskDeadlines,
         ...recommendationDeadlines,
+        ...visitDates,
     ]
         .sort(
             (a, b) =>
@@ -476,6 +495,10 @@ void backupInput;
 .deadline-type.recommendation {
     background: #d1fae5;
     color: #047857;
+}
+.deadline-type.visit {
+    background: #fce7f3;
+    color: #be185d;
 }
 .deadline-date {
     display: flex;

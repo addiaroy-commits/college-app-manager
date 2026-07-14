@@ -17,6 +17,16 @@
 - Search 7,000+ colleges via College Scorecard database
 - Add manually or search, categorize (Reach/Target/Safety), set deadlines (ED/EA/RD)
 - Filter, search, organize
+- Best-fit ranking badges and optional fit-score sorting from the Research Hub
+
+### College Research Hub
+- Compare 2–4 colleges side by side without duplicating College List or Cost Tracker data
+- Weighted fit scoring for academics, affordability, campus life, location, and career support
+- Automatic ranked list with editable personal priority weights
+- College-specific research facts, pros, concerns, questions, and general notes
+- Campus visit, virtual tour, interview, information-session, and college-fair records
+- Visit ratings, contacts, follow-up notes, and thank-you tracking
+- Research data syncs through Firebase and is included in JSON backup/restore
 
 ### Application Command Center
 - Automatic per-college application checklists with custom requirements and due dates
@@ -28,7 +38,7 @@
 - Task manager with links to existing essays, checklist items, recommendations, and documents
 - Linked tasks automatically complete when their source work is complete
 - Recommendation tracker with request/submission dates, college assignments, and thank-you status
-- Combined calendar for college, checklist, task, recommendation, and scholarship deadlines
+- Combined calendar for college, checklist, task, recommendation, scholarship, visit, and interview dates
 - Data syncs through Firebase and is included in JSON backup/restore
 
 ### Majors & Minors
@@ -92,7 +102,7 @@
 - Search, preview, download
 
 ### Onboarding
-- Steps follow sidebar tab order: College List → Applications → Majors → Brag Sheet → Essays → Costs → Goals & Stats → Documents → Scholarships
+- Steps introduce College List → Research & Compare → Applications → Majors → Brag Sheet → Essays → Costs → Goals & Stats → Documents → Scholarships
 
 ## Cross-Page Integrations
 - Application Command Center totals and shortcut on the Dashboard
@@ -107,7 +117,7 @@
 
 ## Sidebar Order
 - Dashboard
-- Applications: College List, Applications, Essays
+- Applications: College List, Research & Compare, Applications, Essays
 - Profile: Majors, Brag Sheet, Documents
 - Money: Costs, Scholarships
 - Progress: Goals, Stats
