@@ -2,6 +2,13 @@
 import { ref, computed } from "vue";
 import { useBragStore, type BragItem } from "../stores/bragStore";
 import { getUserKey } from "../stores/userKey";
+import {
+    createFileRef,
+    loadFile,
+    removeFile,
+    saveFile,
+    validateFileSize,
+} from "../services/fileStorage";
 
 const store = useBragStore();
 const activeTab = ref("sat-act");
@@ -493,6 +500,12 @@ function onAttachFile(field: string, event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    const error = validateFileSize(file);
+    if (error) {
+        alert(error);
+        input.value = "";
+        return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
         const base64 = (reader.result as string).split(",")[1];
@@ -502,14 +515,24 @@ function onAttachFile(field: string, event: Event) {
             data: base64,
             type: file.type,
         };
-        form.value[field] = `FILE:|${file.name}|${base64}|${file.type}`;
+        form.value[field] = createFileRef(file.name, file.type);
     };
     reader.readAsDataURL(file);
 }
 
-function downloadAttached(field: string) {
-    const f = form.value[field + "_file"];
-    if (!f?.data) return;
+async function downloadAttached(field: string) {
+    let f = form.value[field + "_file"];
+    if (!f?.data && editingId.value) {
+        const stored = await loadFile(`brag-${editingId.value}-${field}`);
+        if (stored) {
+            f = { name: stored.name, data: stored.data, type: stored.type };
+            form.value[field + "_file"] = f;
+        }
+    }
+    if (!f?.data) {
+        alert("This attachment is not available on this device or in the cloud.");
+        return;
+    }
     const a = document.createElement("a");
     a.href = `data:${f.type};base64,${f.data}`;
     a.download = f.name;
@@ -522,7 +545,7 @@ function clearAttach(field: string) {
     form.value[field + "_mode"] = "write";
 }
 
-function prepareFormBeforeSave() {
+async function prepareFormBeforeSave(itemId: string) {
     if (
         activeTab.value === "ap-scores" &&
         form.value.testName === "__OTHER__" &&
@@ -539,15 +562,39 @@ function prepareFormBeforeSave() {
     });
     // Add back attachment data as needed
     textareaFields.forEach((f) => {
-        if (form.value[f + "_mode"] === "attach" && form.value[f + "_file"]) {
-            clean[f] =
-                `FILE:|${form.value[f + "_file"].name}|${form.value[f + "_file"].data}|${form.value[f + "_file"].type}`;
-        }
+        const file = form.value[f + "_file"];
+        if (form.value[f + "_mode"] === "attach" && file)
+            clean[f] = createFileRef(file.name, file.type);
     });
+    for (const field of textareaFields) {
+        const file = form.value[field + "_file"];
+        if (form.value[field + "_mode"] === "attach" && file?.data) {
+            await saveFile(
+                `brag-${itemId}-${field}`,
+                file.data,
+                file.type,
+                file.name,
+            );
+        }
+    }
+    const original = store.items.find((item) => item.id === itemId);
+    if (original) {
+        for (const field of textareaFields) {
+            const previous = original.data[field];
+            const next = clean[field];
+            if (
+                typeof previous === "string" &&
+                previous.startsWith("FILE:") &&
+                !(typeof next === "string" && next.startsWith("FILE:"))
+            ) {
+                await removeFile(`brag-${itemId}-${field}`);
+            }
+        }
+    }
     form.value = clean;
 }
 
-function saveItem() {
+async function saveItem() {
     if (activeTab.value === "ap-scores") {
         if (!form.value.testName) {
             alert("Select an AP test.");
@@ -594,9 +641,10 @@ function saveItem() {
             return;
         }
     }
-    prepareFormBeforeSave();
+    const itemId = crypto.randomUUID();
+    await prepareFormBeforeSave(itemId);
     store.addItem({
-        id: editingId.value ?? crypto.randomUUID(),
+        id: itemId,
         category: activeTab.value,
         data: { ...form.value },
     });
@@ -604,7 +652,7 @@ function saveItem() {
     editingId.value = null;
 }
 
-function updateItem() {
+async function updateItem() {
     if (!editingId.value) return;
     if (activeTab.value === "ap-scores") {
         if (!form.value.testName) {
@@ -652,7 +700,7 @@ function updateItem() {
             return;
         }
     }
-    prepareFormBeforeSave();
+    await prepareFormBeforeSave(editingId.value);
     store.updateItem(editingId.value, {
         id: editingId.value,
         category: activeTab.value,
@@ -663,7 +711,16 @@ function updateItem() {
 }
 
 function removeItem(id: string) {
-    if (confirm("Delete this entry?")) store.deleteItem(id);
+    if (!confirm("Delete this entry?")) return;
+    const item = store.items.find((entry) => entry.id === id);
+    if (item) {
+        Object.entries(item.data).forEach(([field, value]) => {
+            if (typeof value === "string" && value.startsWith("FILE:")) {
+                void removeFile(`brag-${id}-${field}`);
+            }
+        });
+    }
+    store.deleteItem(id);
 }
 
 function formatValue(_key: string, val: any): string {

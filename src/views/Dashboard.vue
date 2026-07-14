@@ -163,9 +163,18 @@ function navigateTo(path: string) {
 
 const backupInput = ref<HTMLInputElement | null>(null);
 
-function handleExport() {
-    exportAllData();
-    showToast("✅ Backup downloaded");
+const backupBusy = ref(false);
+
+async function handleExport() {
+    backupBusy.value = true;
+    try {
+        await exportAllData();
+        showToast("✅ Full backup downloaded");
+    } catch (e: any) {
+        showToast(`❌ Backup failed: ${e.message}`);
+    } finally {
+        backupBusy.value = false;
+    }
 }
 
 function handleImportClick() {
@@ -176,13 +185,15 @@ async function handleImport(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    backupBusy.value = true;
     try {
         const count = await importAllData(file);
-        showToast(`✅ Restored ${count} data keys — refresh to see changes`);
+        showToast(`✅ Restored ${count} data and file records`);
         setTimeout(() => location.reload(), 1500);
     } catch (e: any) {
         showToast(`❌ Import failed: ${e.message}`);
     }
+    backupBusy.value = false;
     input.value = "";
 }
 void backupInput;
@@ -303,10 +314,10 @@ void backupInput;
         <!-- Backup & Restore -->
         <div class="panel" style="margin-top:20px;">
             <h3>💾 Backup & Restore</h3>
-            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Export all your data as a JSON file, or restore from a previous backup.</p>
-            <div style="display:flex;gap:8px;">
-                <button class="quick-btn" @click="handleExport">📥 Export Backup</button>
-                <button class="quick-btn" @click="handleImportClick">📤 Restore Backup</button>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Export your account data and uploaded documents, or restore them from a previous backup.</p>
+            <div class="backup-actions">
+                <button class="quick-btn" :disabled="backupBusy" @click="handleExport">📥 {{ backupBusy ? "Working..." : "Export Backup" }}</button>
+                <button class="quick-btn" :disabled="backupBusy" @click="handleImportClick">📤 Restore Backup</button>
                 <input ref="backupInput" type="file" accept=".json" style="display:none;" @change="handleImport" />
             </div>
         </div>
@@ -550,10 +561,18 @@ void backupInput;
     font-size: 13px;
     color: var(--text-secondary);
 }
+.backup-actions { display: flex; gap: 8px; }
 
 @media (max-width: 980px) {
     .summary-grid {
         grid-template-columns: 1fr;
     }
+}
+@media (max-width: 600px) {
+    .backup-actions { flex-direction: column; }
+    .backup-actions button { width: 100%; }
+    .upcoming-row { align-items: flex-start; flex-wrap: wrap; }
+    .upcoming-info { min-width: calc(100% - 110px); }
+    .deadline-date { margin-left: auto; }
 }
 </style>

@@ -5,7 +5,11 @@ import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useBragStore } from "../stores/bragStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
-import { saveFile, loadFile } from "../services/fileStorage";
+import {
+    saveFile,
+    loadFile,
+    validateFileSize,
+} from "../services/fileStorage";
 
 const docStore = useDocumentStore();
 const collegeStore = useCollegeStore();
@@ -180,7 +184,15 @@ function openEditForm(doc: any) {
 function onFilePicked(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (file) form.value.fileName = file.name;
+    if (file) {
+        const error = validateFileSize(file);
+        if (error) {
+            alert(error);
+            input.value = "";
+            return;
+        }
+        form.value.fileName = file.name;
+    }
 }
 
 function toggleCollege(collegeId: string) {
@@ -190,7 +202,16 @@ function toggleCollege(collegeId: string) {
         : form.value.selectedColleges.splice(idx, 1);
 }
 
-function saveDocument() {
+function readBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+    });
+}
+
+async function saveDocument() {
     const input = fileInput.value;
     const hasNewFile = input?.files?.length && input.files[0];
 
@@ -199,18 +220,14 @@ function saveDocument() {
             (d) => d.id === editingId.value,
         );
         if (idx !== -1) {
-            docStore.documents[idx] = {
+            docStore.updateDocument(editingId.value, {
                 ...docStore.documents[idx],
                 fileName:
                     form.value.fileName || docStore.documents[idx].fileName,
                 description: form.value.description.trim(),
                 type: form.value.type,
                 collegeIds: [...form.value.selectedColleges],
-            };
-            localStorage.setItem(
-                "applywise-documents",
-                JSON.stringify(docStore.documents),
-            );
+            });
         }
         showUpload.value = false;
         editingId.value = null;
@@ -220,9 +237,10 @@ function saveDocument() {
     if (!hasNewFile && !editingId.value) return;
     uploading.value = true;
     const file = input!.files![0];
-    const reader = new FileReader();
-    reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
+    try {
+        const error = validateFileSize(file);
+        if (error) throw new Error(error);
+        const base64 = await readBase64(file);
         const docId = editingId.value || crypto.randomUUID();
 
         // Store file in IndexedDB
@@ -239,7 +257,7 @@ function saveDocument() {
                 (d) => d.id === editingId.value,
             );
             if (idx !== -1) {
-                docStore.documents[idx] = {
+                docStore.updateDocument(editingId.value, {
                     id: editingId.value,
                     fileName: form.value.fileName || file.name,
                     description: form.value.description.trim(),
@@ -248,11 +266,7 @@ function saveDocument() {
                     fileData: "",
                     fileType: file.type,
                     dateAdded: docStore.documents[idx].dateAdded,
-                };
-                localStorage.setItem(
-                    "applywise-documents",
-                    JSON.stringify(docStore.documents),
-                );
+                });
             }
         } else {
             docStore.addDocument({
@@ -269,12 +283,23 @@ function saveDocument() {
         uploading.value = false;
         showUpload.value = false;
         editingId.value = null;
-    };
-    reader.readAsDataURL(file);
+    } catch (error: any) {
+        uploading.value = false;
+        alert(error?.message || "The document could not be saved.");
+    }
 }
 
-function openPreview(doc: UnifiedDoc) {
-    previewDoc.value = doc;
+async function openPreview(doc: UnifiedDoc) {
+    let fileData = doc.fileData;
+    let fileType = doc.fileType;
+    if (!fileData || fileData.length < 100) {
+        const stored = await loadFile(doc.id);
+        if (stored) {
+            fileData = stored.data;
+            fileType = stored.type;
+        }
+    }
+    previewDoc.value = { ...doc, fileData, fileType };
 }
 
 async function downloadDocument(doc: UnifiedDoc) {
@@ -429,7 +454,7 @@ function sourceBadgeClass(source: string) {
             >
                 <div class="doc-thumb">
                     <img
-                        v-if="doc.fileType.startsWith('image')"
+                        v-if="doc.fileData && doc.fileType.startsWith('image')"
                         :src="
                             'data:' + doc.fileType + ';base64,' + doc.fileData
                         "

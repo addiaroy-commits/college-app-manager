@@ -32,11 +32,17 @@ export const useDocumentStore = defineStore("documents", () => {
     documents.value.push(doc);
     save();
   }
+  function updateDocument(id: string, updated: Document) {
+    const index = documents.value.findIndex((document) => document.id === id);
+    if (index === -1) return;
+    documents.value[index] = updated;
+    save();
+  }
   function deleteDocument(id: string) {
     documents.value = documents.value.filter((d) => d.id !== id);
     save();
     removeFile(id).catch(() => {});
   }
 
-  return { documents, addDocument, deleteDocument };
+  return { documents, addDocument, updateDocument, deleteDocument };
 });

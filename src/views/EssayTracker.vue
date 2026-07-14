@@ -315,7 +315,10 @@ function statusColor(s: string) {
             ></div>
         </div>
 
-        <div class="page-header"><h2>✍️ Essay Tracker</h2></div>
+        <div class="page-header">
+            <h2>✍️ Essay Tracker</h2>
+            <button class="studio-link" @click="router.push('/ai-studio')">Open AI Studio</button>
+        </div>
         <p class="welcome">
             Manage college essays, Common App prompts, and scholarship & award
             essays.
@@ -977,12 +980,23 @@ function statusColor(s: string) {
 .page-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
     margin-bottom: 20px;
 }
 .page-header h2 {
     margin-bottom: 0;
     font-size: 24px;
+}
+.studio-link {
+    padding: 9px 12px;
+    border: 1px solid var(--primary);
+    border-radius: 6px;
+    background: var(--primary);
+    color: var(--primary-contrast);
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
 }
 .welcome {
     color: var(--text-secondary);

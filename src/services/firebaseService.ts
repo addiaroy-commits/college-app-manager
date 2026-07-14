@@ -5,6 +5,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
   type User,
 } from "firebase/auth";
 import {
@@ -14,6 +16,7 @@ import {
   getDoc,
   writeBatch,
 } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD6Dh69qe5SAFx9Y8ftfhAfyM0501dEVWk",
@@ -27,6 +30,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+export const authPersistenceReady = setPersistence(
+  auth,
+  browserLocalPersistence,
+).catch((error) => {
+  console.warn("Firebase login persistence could not be initialized:", error);
+});
 
 export interface UserDataRecord {
   value: any;
@@ -34,12 +45,14 @@ export interface UserDataRecord {
 }
 
 // ── Auth ──
-export function loginUser(email: string, password: string) {
+export async function loginUser(email: string, password: string) {
+  await authPersistenceReady;
   // Firebase requires email format, so we convert username to email-like
   return signInWithEmailAndPassword(auth, `${email}@cogapp.user`, password);
 }
 
-export function signupUser(email: string, password: string) {
+export async function signupUser(email: string, password: string) {
+  await authPersistenceReady;
   return createUserWithEmailAndPassword(auth, `${email}@cogapp.user`, password);
 }
 
@@ -56,10 +69,11 @@ export function getCurrentUser() {
 }
 
 export function getUserId(): string | null {
-  const user = auth.currentUser;
-  if (!user) return null;
-  // Use the part before @ as the user key
-  return user.email?.split("@")[0] || user.uid;
+  return auth.currentUser?.uid || null;
+}
+
+export function getLegacyUserId(user: User): string | null {
+  return user.email?.split("@")[0] || null;
 }
 
 // ── Firestore ──
@@ -125,4 +139,4 @@ export async function saveAllUserData(
   await batch.commit();
 }
 
-export { db, auth };
+export { db, auth, storage };

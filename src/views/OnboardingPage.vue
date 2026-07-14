@@ -74,6 +74,24 @@ const steps = [
         hint: "Tip: Use the match score to find scholarships that best fit your profile!",
     },
     {
+        emoji: "💾",
+        title: "11. Protect Your Account",
+        desc: "Your work is tied to your unique account and saved locally first, then synced to the cloud. The Backup & Restore buttons on the Dashboard create a personal copy of your app data and uploaded documents.",
+        hint: "Tip: Export a fresh backup after major application milestones.",
+    },
+    {
+        emoji: "🔔",
+        title: "12. Use AI Studio",
+        desc: "Compare prompts with the Essay Reuse Mapper, get a focused revision plan from the Essay Coach, and use the Application Advisor to identify the most important next action across your entire college plan.",
+        hint: "Tip: Your essay text stays on this device while the built-in analysis runs.",
+    },
+    {
+        emoji: "🔔",
+        title: "13. Stay Connected",
+        desc: "Use notifications to catch upcoming deadlines, open Demo Mode to explore safely, and open the read-only Parent & Counselor View when you want feedback without sharing private essay or portal details.",
+        hint: "Tip: Manage reminders, review privacy, appearance, and Demo Mode from Settings.",
+    },
+    {
         emoji: "🚀",
         title: "You're Ready!",
         desc: "Your entire college application journey — organized, tracked, and stress-free. Explore each tab in the sidebar. Add data, track progress, and take control of your future.",

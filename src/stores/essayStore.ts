@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { getUserKey } from "./userKey";
+import { removeFile } from "../services/fileStorage";
 
 export interface Essay {
   id: string;
@@ -47,6 +48,7 @@ export const useEssayStore = defineStore("essays", () => {
   function deleteEssay(id: string) {
     essays.value = essays.value.filter((e) => e.id !== id);
     save();
+    removeFile(`essay-${id}`).catch(() => {});
   }
   function getEssaysByCollege(collegeId: string) {
     return essays.value.filter((e) => e.collegeId === collegeId);

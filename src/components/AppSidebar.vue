@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRoute } from "vue-router";
-import { useThemeStore, type ThemeName } from "../stores/themeStore";
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "../stores/userStore";
+import NotificationCenter from "./NotificationCenter.vue";
+import { isDemoMode } from "../services/demoMode";
 const user = useUserStore();
 const route = useRoute();
-const theme = useThemeStore();
-const showThemes = ref(false);
+const router = useRouter();
+const mobileOpen = ref(false);
+const demoActive = computed(() => isDemoMode());
+watch(() => route.fullPath, () => { mobileOpen.value = false; });
 
 const navSections = [
     {
@@ -20,6 +23,7 @@ const navSections = [
             { path: "/research", label: "🔎 Research & Compare", name: "research" },
             { path: "/applications", label: "🗂️ Applications", name: "applications" },
             { path: "/essays", label: "✍️ Essays", name: "essays" },
+            { path: "/ai-studio", label: "AI Studio", name: "ai-studio" },
         ],
     },
     {
@@ -42,29 +46,32 @@ const navSections = [
         items: [
             { path: "/goals", label: "🎯 Goals", name: "goals" },
             { path: "/stats", label: "📊 Stats", name: "stats" },
+            { path: "/review", label: "👥 Parent / Counselor", name: "review" },
         ],
     },
 ];
 
-const themeOptions: { value: ThemeName; label: string }[] = [
-    { value: "purple", label: "💜 Lilac" },
-    { value: "blue", label: "💙 Ocean" },
-    { value: "green", label: "💚 Forest" },
-    { value: "rose", label: "💗 Rose" },
-];
-
-function doReload() { location.reload(); }
-function changeTheme(t: ThemeName) {
-    theme.setTheme(t);
-    showThemes.value = false;
-    doReload();
+async function handleLogout() {
+    await user.logout();
+    await router.push("/login");
 }
 </script>
 
 <template>
-    <aside class="sidebar">
+    <header class="mobile-topbar">
+        <button class="mobile-menu" aria-label="Open navigation" @click="mobileOpen = true">☰</button>
+        <router-link to="/" class="mobile-brand">CogApp</router-link>
+        <NotificationCenter />
+    </header>
+    <button v-if="mobileOpen" class="sidebar-overlay" aria-label="Close navigation" @click="mobileOpen = false"></button>
+    <aside class="sidebar" :class="{ open: mobileOpen }">
         <div class="sidebar-header">
-            <h1 class="app-name">CogApp</h1>
+            <div>
+                <h1 class="app-name">CogApp</h1>
+                <span v-if="demoActive" class="demo-badge">Demo workspace</span>
+            </div>
+            <div class="desktop-notifications"><NotificationCenter /></div>
+            <button class="mobile-close" aria-label="Close navigation" @click="mobileOpen = false">✕</button>
         </div>
         <nav class="sidebar-nav">
             <div
@@ -81,59 +88,34 @@ function changeTheme(t: ThemeName) {
                     :to="item.path"
                     class="nav-link"
                     :class="{ active: route.name === item.name }"
+                    @click="mobileOpen = false"
                     >{{ item.label }}</router-link
                 >
             </div>
         </nav>
         <div class="sidebar-footer">
+            <router-link to="/settings" class="settings-link" :class="{ active: route.name === 'settings' }">⚙️ Settings</router-link>
             <button
                 class="logout-btn"
-                @click="
-                    user.logout();
-                    doReload();
-                "
+                @click="handleLogout"
             >
                 👤 {{ user.username }} — Logout
             </button>
-            <div class="theme-dropdown">
-                <button
-                    class="theme-dropdown-btn"
-                    @click="showThemes = !showThemes"
-                >
-                    🎨
-                    {{
-                        themeOptions.find((t) => t.value === theme.theme)
-                            ?.label || "💜 Lilac"
-                    }}
-                </button>
-                <div v-if="showThemes" class="theme-menu">
-                    <button
-                        v-for="opt in themeOptions"
-                        :key="opt.value"
-                        class="theme-option"
-                        :class="{ active: theme.theme === opt.value }"
-                        @click="changeTheme(opt.value)"
-                    >
-                        {{ opt.label }}
-                    </button>
-                </div>
-            </div>
-            <button
-                class="theme-toggle"
-                @click="
-                    theme.toggle();
-                    doReload();
-                "
-            >
-                {{ theme.isDark ? "☀️ Light Mode" : "🌙 Dark Mode" }}
-            </button>
         </div>
     </aside>
+    <nav class="mobile-bottom-nav" aria-label="Primary navigation">
+        <router-link to="/" :class="{ active: route.name === 'dashboard' }"><span>⌂</span>Home</router-link>
+        <router-link to="/colleges" :class="{ active: route.name === 'colleges' }"><span>🏫</span>Colleges</router-link>
+        <router-link to="/applications" :class="{ active: route.name === 'applications' }"><span>▣</span>Applications</router-link>
+        <router-link to="/essays" :class="{ active: route.name === 'essays' }"><span>✎</span>Essays</router-link>
+        <router-link to="/settings" :class="{ active: route.name === 'settings' }"><span>⚙</span>Settings</router-link>
+    </nav>
 </template>
 
 <style scoped>
 .sidebar {
     width: 240px;
+    flex: 0 0 240px;
     background: var(--sidebar-bg);
     color: var(--sidebar-text);
     display: flex;
@@ -144,14 +126,19 @@ function changeTheme(t: ThemeName) {
 .sidebar-header {
     padding: 24px 20px 32px;
     border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
 }
 .app-name {
     font-size: 24px;
     font-weight: 700;
     margin: 0;
     color: var(--sidebar-text);
-    letter-spacing: -0.5px;
+    letter-spacing: 0;
 }
+.demo-badge { display: inline-block; margin-top: 5px; padding: 3px 6px; border-radius: 4px; background: #fef3c7; color: #92400e; font-size: 9px; font-weight: 800; }
 .sidebar-nav {
     display: flex;
     flex-direction: column;
@@ -192,6 +179,8 @@ function changeTheme(t: ThemeName) {
     padding: 12px;
     border-top: 1px solid rgba(128, 128, 128, 0.15);
 }
+.settings-link { display: block; margin-bottom: 8px; padding: 9px; border: 1px solid rgba(128,128,128,.2); border-radius: 7px; color: var(--sidebar-text); font-size: 13px; text-decoration: none; }
+.settings-link:hover, .settings-link.active { background: rgba(128,128,128,.12); }
 
 .logout-btn {
     width: 100%;
@@ -209,71 +198,22 @@ function changeTheme(t: ThemeName) {
     background: rgba(255, 0, 0, 0.12);
 }
 
-.theme-dropdown {
-    position: relative;
-    margin-bottom: 8px;
-}
-.theme-dropdown-btn {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid rgba(128, 128, 128, 0.2);
-    border-radius: 8px;
-    background: rgba(128, 128, 128, 0.06);
-    color: var(--sidebar-text);
-    font-size: 13px;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s;
-}
-.theme-dropdown-btn:hover {
-    background: rgba(128, 128, 128, 0.12);
-}
-.theme-menu {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    background: var(--sidebar-bg);
-    border: 1px solid rgba(128, 128, 128, 0.2);
-    border-radius: 8px;
-    overflow: hidden;
-    z-index: 100;
-    margin-bottom: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-.theme-option {
-    width: 100%;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    color: var(--sidebar-link);
-    font-size: 13px;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.15s;
-}
-.theme-option:hover {
-    background: rgba(128, 128, 128, 0.1);
-    color: var(--sidebar-text);
-}
-.theme-option.active {
-    background: rgba(128, 128, 128, 0.15);
-    color: var(--sidebar-text);
-    font-weight: 600;
-}
+.mobile-topbar, .mobile-close, .mobile-bottom-nav, .sidebar-overlay { display: none; }
 
-.theme-toggle {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid rgba(128, 128, 128, 0.2);
-    border-radius: 8px;
-    background: rgba(128, 128, 128, 0.06);
-    color: var(--sidebar-text);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.theme-toggle:hover {
-    background: rgba(128, 128, 128, 0.15);
+@media (max-width: 760px) {
+    .mobile-topbar { position: fixed; z-index: 800; top: 0; left: 0; right: 0; height: 58px; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); }
+    .mobile-menu { width: 38px; height: 38px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-card); color: var(--text-primary); font-size: 18px; }
+    .mobile-brand { color: var(--text-primary); font-size: 18px; font-weight: 800; text-align: center; text-decoration: none; }
+    .sidebar { position: fixed; z-index: 1000; inset: 0 auto 0 0; width: min(86vw, 310px); min-height: 100dvh; transform: translateX(-105%); box-shadow: 12px 0 35px rgba(15,23,42,.2); transition: transform .22s ease; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { position: fixed; z-index: 900; inset: 0; display: block; width: 100%; border: 0; background: rgba(15,23,42,.48); }
+    .sidebar-header { padding: 19px 17px; }
+    .desktop-notifications { display: none; }
+    .mobile-close { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid rgba(128,128,128,.2); border-radius: 7px; background: transparent; color: var(--sidebar-text); }
+    .sidebar-nav { padding-bottom: 16px; }
+    .mobile-bottom-nav { position: fixed; z-index: 750; bottom: 0; left: 0; right: 0; height: calc(64px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5,1fr); padding: 5px 5px env(safe-area-inset-bottom); border-top: 1px solid var(--border-color); background: var(--bg-card); }
+    .mobile-bottom-nav a { display: flex; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 6px; color: var(--text-secondary); font-size: 9px; text-decoration: none; }
+    .mobile-bottom-nav a span { font-size: 17px; line-height: 1; }
+    .mobile-bottom-nav a.active { background: var(--card-accent); color: var(--primary); font-weight: 800; }
 }
 </style>

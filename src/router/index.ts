@@ -66,6 +66,11 @@ const router = createRouter({
       component: () => import("../views/CollegeResearchHub.vue"),
     },
     {
+      path: "/ai-studio",
+      name: "ai-studio",
+      component: () => import("../views/AIStudio.vue"),
+    },
+    {
       path: "/essays/college/:collegeId",
       name: "college-essays",
       component: () => import("../views/CollegeEssaysPage.vue"),
@@ -78,6 +83,16 @@ const router = createRouter({
     { path: "/essays", name: "essays", component: EssayTracker },
     { path: "/documents", name: "documents", component: DocumentVault },
     { path: "/stats", name: "stats", component: StatsPage },
+    {
+      path: "/review",
+      name: "review",
+      component: () => import("../views/ReviewView.vue"),
+    },
+    {
+      path: "/settings",
+      name: "settings",
+      component: () => import("../views/SettingsPage.vue"),
+    },
     { path: "/goals", name: "goals", component: GoalsPage },
     { path: "/scholarships", name: "scholarships", component: ScholarshipsPage },
     {

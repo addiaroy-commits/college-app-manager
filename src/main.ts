@@ -6,6 +6,9 @@ import App from "./App.vue";
 import { onAuthChange } from "./services/firebaseService";
 import { cloudLoadRecord, cloudSave } from "./services/cloudStorage";
 import { runMigration } from "./services/storageService";
+import { prepareUserIdentity } from "./services/identityMigration";
+import { SYNC_KEYS } from "./services/syncKeys";
+import { syncPendingFiles } from "./services/fileStorage";
 
 const app = createApp(App);
 app.use(createPinia());
@@ -17,23 +20,6 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 }
 
 // ── Cross-Device Cloud Sync Engine ──
-const SYNC_KEYS = [
-  "colleges",
-  "essays",
-  "documents",
-  "brag",
-  "costs",
-  "scholarships",
-  "scholarship-goals",
-  "goals",
-  "top-picks",
-  "custom-majors",
-  "sat-act",
-  "essay-targets",
-  "command-center",
-  "college-research",
-];
-
 let currentUserId: string | null = null;
 let syncInterval: number | null = null;
 let isApplyingRemoteData = false;
@@ -107,12 +93,18 @@ async function syncFromCloud() {
         continue;
       }
 
-      if (local === null || cloudRecord.updatedAt >= localUpdatedAt) {
+      const cloudValue = JSON.stringify(cloudRecord.value);
+      const remoteIsNewer =
+        local === null || cloudRecord.updatedAt > localUpdatedAt;
+
+      if (remoteIsNewer) {
         isApplyingRemoteData = true;
-        localStorage.setItem(localStorageKey, JSON.stringify(cloudRecord.value));
+        if (local !== cloudValue) {
+          localStorage.setItem(localStorageKey, cloudValue);
+          pulled++;
+        }
         markLocalUpdated(currentUserId, key, cloudRecord.updatedAt || Date.now());
         isApplyingRemoteData = false;
-        pulled++;
       } else {
         await cloudSave(key, JSON.parse(local), {
           skipLocalBackup: true,
@@ -137,7 +129,7 @@ function watchLocalChanges() {
     // If this is user data being saved, push to cloud
     if (currentUserId && key.startsWith(`user-${currentUserId}-`)) {
       const dataKey = key.replace(`user-${currentUserId}-`, "");
-      if (SYNC_KEYS.includes(dataKey)) {
+      if ((SYNC_KEYS as readonly string[]).includes(dataKey)) {
         try {
           const updatedAt = markLocalUpdated(currentUserId, dataKey);
           void cloudSave(dataKey, JSON.parse(value), {
@@ -153,12 +145,14 @@ function watchLocalChanges() {
 // Initialize sync engine on auth change
 onAuthChange(async (user) => {
   if (user) {
-    const uid = user.email?.split("@")[0] || user.uid;
+    await prepareUserIdentity(user);
+    const uid = user.uid;
     currentUserId = uid;
     localStorage.setItem("applywise-session", uid);
 
     const pulled = await syncFromCloud();
     await runMigration();
+    void syncPendingFiles();
 
     // Stores load synchronously from localStorage, so refresh after remote data arrives.
     if (pulled && pulled > 0) {
@@ -180,4 +174,9 @@ onAuthChange(async (user) => {
     if (syncInterval) clearInterval(syncInterval);
     syncInterval = null;
   }
+});
+
+window.addEventListener("online", () => {
+  void pushAllToCloud();
+  void syncPendingFiles();
 });

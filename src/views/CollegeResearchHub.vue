@@ -63,6 +63,13 @@ const rankedColleges = computed(() =>
 );
 
 const selectedProfile = computed(() => profileFor(selectedProfileId.value));
+const selectedFitEntry = computed(() => {
+  const index = rankedColleges.value.findIndex(
+    (entry) => entry.college.id === selectedProfileId.value,
+  );
+  if (index < 0) return null;
+  return { ...rankedColleges.value[index], rank: index + 1 };
+});
 const weightTotal = computed(() =>
   Object.values(store.weights).reduce((total, value) => total + value, 0),
 );
@@ -460,37 +467,48 @@ function removeVisit(visit: CollegeVisit) {
         </div>
       </section>
 
-      <div class="ranking-list">
-        <section
-          v-for="(entry, index) in rankedColleges"
-          :key="entry.college.id"
-          class="ranking-card"
-        >
-          <div class="rank-number">{{ index + 1 }}</div>
+      <div class="fit-layout">
+        <aside class="college-note-list panel fit-college-list">
+          <button
+            v-for="(entry, index) in rankedColleges"
+            :key="entry.college.id"
+            :class="{ active: selectedProfileId === entry.college.id }"
+            @click="selectedProfileId = entry.college.id"
+          >
+            <span>
+              <strong>#{{ index + 1 }} {{ entry.college.name }}</strong>
+              <small>{{ entry.college.category }} · {{ scoreLabel(entry.score) }}</small>
+            </span>
+            <b :class="scoreClass(entry.score)">{{ entry.score || '—' }}</b>
+          </button>
+        </aside>
+
+        <section v-if="selectedFitEntry" class="ranking-card panel fit-editor">
+          <div class="rank-number">{{ selectedFitEntry.rank }}</div>
           <div class="ranking-main">
             <div class="ranking-heading">
               <div>
-                <h3>{{ entry.college.name }}</h3>
-                <p>{{ entry.college.category }} · {{ entry.profile?.status || 'Not Started' }}</p>
+                <h3>{{ selectedFitEntry.college.name }}</h3>
+                <p>{{ selectedFitEntry.college.category }} · {{ selectedFitEntry.profile?.status || 'Not Started' }}</p>
               </div>
-              <div class="score-summary" :class="scoreClass(entry.score)">
-                <strong>{{ entry.score || '—' }}</strong>
-                <span>{{ scoreLabel(entry.score) }}</span>
+              <div class="score-summary" :class="scoreClass(selectedFitEntry.score)">
+                <strong>{{ selectedFitEntry.score || '—' }}</strong>
+                <span>{{ scoreLabel(selectedFitEntry.score) }}</span>
               </div>
             </div>
-            <div v-if="entry.profile" class="rating-grid">
+            <div v-if="selectedFitEntry.profile" class="rating-grid">
               <div v-for="category in ratingCategories" :key="category.key" class="rating-control">
                 <div>
                   <strong>{{ category.label }}</strong>
                   <span>{{ category.description }}</span>
                 </div>
-                <div class="rating-buttons" :aria-label="`${category.label} rating for ${entry.college.name}`">
+                <div class="rating-buttons" :aria-label="`${category.label} rating for ${selectedFitEntry.college.name}`">
                   <button
                     v-for="rating in [1, 2, 3, 4, 5]"
                     :key="rating"
-                    :class="{ active: entry.profile.ratings[category.key] === rating }"
+                    :class="{ active: selectedFitEntry.profile.ratings[category.key] === rating }"
                     :title="`${rating} out of 5`"
-                    @click="setRating(entry.profile, category.key, rating)"
+                    @click="setRating(selectedFitEntry.profile, category.key, rating)"
                   >
                     {{ rating }}
                   </button>
@@ -498,10 +516,13 @@ function removeVisit(visit: CollegeVisit) {
               </div>
             </div>
             <div class="ranking-actions">
-              <span>Net cost: {{ formatCurrency(netCostFor(entry.college.id)) }}</span>
-              <button class="text-button" @click="openNotes(entry.college.id)">Open research notes</button>
+              <span>Net cost: {{ formatCurrency(netCostFor(selectedFitEntry.college.id)) }}</span>
+              <button class="text-button" @click="openNotes(selectedFitEntry.college.id)">Open research notes</button>
             </div>
           </div>
+        </section>
+        <section v-else class="panel empty-panel">
+          Add a college to begin rating fit.
         </section>
       </div>
     </template>
@@ -1140,11 +1161,23 @@ function removeVisit(visit: CollegeVisit) {
   font-size: 11px;
 }
 
-.notes-layout {
+.notes-layout,
+.fit-layout {
   display: grid;
   grid-template-columns: 245px minmax(0, 1fr);
   align-items: start;
   gap: 14px;
+}
+
+.fit-college-list {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.fit-editor {
+  min-width: 0;
 }
 
 .college-note-list {
@@ -1437,11 +1470,17 @@ textarea {
   .weight-grid,
   .rating-grid,
   .research-form,
-  .notes-grid,
-  .visit-form-grid,
-  .notes-layout,
-  .source-summary {
+    .notes-grid,
+    .visit-form-grid,
+    .notes-layout,
+    .fit-layout,
+    .source-summary {
     grid-template-columns: 1fr;
+  }
+
+  .fit-college-list {
+    position: static;
+    max-height: 260px;
   }
 
   .wide-field {

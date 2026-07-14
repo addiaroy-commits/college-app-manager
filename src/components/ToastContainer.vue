@@ -80,4 +80,9 @@ function undo(toast: any) {
     font-size: 14px;
     padding: 2px;
 }
+@media (max-width: 760px) {
+    .toast-container { left: 10px; right: 10px; bottom: calc(74px + env(safe-area-inset-bottom)); }
+    .toast { width: 100%; min-width: 0; padding: 11px 12px; }
+    .toast span { min-width: 0; overflow-wrap: anywhere; }
+}
 </style>

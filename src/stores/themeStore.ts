@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { getUserKey } from "./userKey";
 
 export type ThemeName = "purple" | "blue" | "green" | "rose";
 
@@ -214,22 +215,26 @@ export const useThemeStore = defineStore("theme", () => {
   const isDark = ref(false);
   const theme = ref<ThemeName>("purple");
 
-  const savedDark = localStorage.getItem("applywise-theme-dark");
+  const savedDark = localStorage.getItem(getUserKey("theme-dark"));
   if (savedDark === "true") {
     isDark.value = true;
     document.documentElement.setAttribute("data-theme", "dark");
   }
 
-  const savedTheme = localStorage.getItem(
-    "applywise-theme-color",
-  ) as ThemeName | null;
+  const savedThemeRaw = localStorage.getItem(getUserKey("theme-color"));
+  let savedTheme = savedThemeRaw as ThemeName | null;
+  if (savedThemeRaw?.startsWith('"')) {
+    try {
+      savedTheme = JSON.parse(savedThemeRaw);
+    } catch {}
+  }
   if (savedTheme && themes[savedTheme]) theme.value = savedTheme;
 
   apply(themes[theme.value][isDark.value ? "dark" : "light"]);
 
   function toggle() {
     isDark.value = !isDark.value;
-    localStorage.setItem("applywise-theme-dark", String(isDark.value));
+    localStorage.setItem(getUserKey("theme-dark"), String(isDark.value));
     apply(themes[theme.value][isDark.value ? "dark" : "light"]);
     if (isDark.value)
       document.documentElement.setAttribute("data-theme", "dark");
@@ -238,7 +243,7 @@ export const useThemeStore = defineStore("theme", () => {
 
   function setTheme(t: ThemeName) {
     theme.value = t;
-    localStorage.setItem("applywise-theme-color", t);
+    localStorage.setItem(getUserKey("theme-color"), JSON.stringify(t));
     apply(themes[t][isDark.value ? "dark" : "light"]);
   }
 

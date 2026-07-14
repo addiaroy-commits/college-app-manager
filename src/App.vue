@@ -2,8 +2,10 @@
 import AppSidebar from "./components/AppSidebar.vue";
 import ToastContainer from "./components/ToastContainer.vue";
 import { useRoute } from "vue-router";
+import { useThemeStore } from "./stores/themeStore";
 
 const route = useRoute();
+useThemeStore();
 </script>
 
 <template>
@@ -37,9 +39,15 @@ const route = useRoute();
 }
 .main-content {
     flex: 1;
+    min-width: 0;
     padding: 32px;
     background: var(--bg-page);
     transition: background 0.3s;
+}
+
+@media (max-width: 760px) {
+    .app-layout { display: block; }
+    .main-content { width: 100%; padding: 76px 14px 86px; overflow-x: hidden; }
 }
 
 /* Page Transitions */

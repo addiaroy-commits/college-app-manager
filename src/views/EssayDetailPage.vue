@@ -3,6 +3,13 @@ import { ref, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useEssayStore } from "../stores/essayStore";
 import { useCollegeStore } from "../stores/collegeStore";
+import {
+    createFileRef,
+    loadFile,
+    removeFile,
+    saveFile,
+    validateFileSize,
+} from "../services/fileStorage";
 
 const route = useRoute();
 const router = useRouter();
@@ -31,10 +38,11 @@ void fileInput; // used as template ref
 const attachedFile = ref<{ name: string; data: string; type: string } | null>(
     null,
 );
+let attachmentStored = false;
 
 if (essay.value) {
-    content.value = essay.value.content;
     if (essay.value.content && essay.value.content.startsWith("FILE:")) {
+        content.value = "";
         mode.value = "attach";
         const parts = essay.value.content.split("|");
         attachedFile.value = {
@@ -42,11 +50,18 @@ if (essay.value) {
             data: parts[2] || "",
             type: parts[3] || "application/pdf",
         };
+        attachmentStored = true;
+    } else {
+        content.value = essay.value.content;
     }
 }
 
 watch(content, () => {
     if (essay.value) {
+        if (mode.value === "write" && attachmentStored) {
+            attachmentStored = false;
+            void removeFile(`essay-${essayId}`);
+        }
         essay.value.currentWordCount = wordCount.value;
         essay.value.content =
             mode.value === "attach" && attachedFile.value
@@ -112,24 +127,52 @@ function changeStatus(newStatus: string) {
     }
 }
 
-function onFilePicked(e: Event) {
+async function onFilePicked(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    const error = validateFileSize(file);
+    if (error) {
+        alert(error);
+        input.value = "";
+        return;
+    }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
         const base64 = (reader.result as string).split(",")[1];
-        attachedFile.value = { name: file.name, data: base64, type: file.type };
-        if (essay.value) {
-            essay.value.content = `FILE:|${file.name}|${base64}|${file.type}`;
-            essayStore.updateEssay(essayId, essay.value);
+        try {
+            await saveFile(`essay-${essayId}`, base64, file.type, file.name);
+            attachedFile.value = {
+                name: file.name,
+                data: base64,
+                type: file.type,
+            };
+            attachmentStored = true;
+            if (essay.value) {
+                essay.value.content = createFileRef(file.name, file.type);
+                essayStore.updateEssay(essayId, essay.value);
+            }
+        } catch (saveError: any) {
+            alert(saveError?.message || "The attachment could not be saved.");
         }
     };
     reader.readAsDataURL(file);
 }
 
-function downloadAttached() {
+async function downloadAttached() {
     if (!attachedFile.value) return;
+    if (!attachedFile.value.data) {
+        const stored = await loadFile(`essay-${essayId}`);
+        if (!stored) {
+            alert("This attachment is not available on this device or in the cloud.");
+            return;
+        }
+        attachedFile.value = {
+            name: stored.name,
+            data: stored.data,
+            type: stored.type,
+        };
+    }
     const a = document.createElement("a");
     a.href = `data:${attachedFile.value.type};base64,${attachedFile.value.data}`;
     a.download = attachedFile.value.name;
@@ -242,9 +285,14 @@ function downloadAttached() {
                     </div>
                 </div>
 
-                <button class="ai-toggle" @click="showAI = !showAI">
-                    {{ showAI ? "🤖 Hide Analysis" : "🤖 Run AI Checker" }}
-                </button>
+                <div class="ai-tools-row">
+                    <button class="ai-toggle" @click="showAI = !showAI">
+                        {{ showAI ? "Hide quick check" : "Run quick writing check" }}
+                    </button>
+                    <button class="coach-link" @click="router.push({ path: '/ai-studio', query: { tab: 'coach', essay: essayId } })">
+                        Open in AI Essay Coach
+                    </button>
+                </div>
 
                 <div v-if="showAI && analysis" class="ai-panel">
                     <h3>🤖 Essay Analysis</h3>
@@ -520,6 +568,9 @@ function downloadAttached() {
     font-weight: 600;
     cursor: pointer;
 }
+.ai-tools-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.ai-tools-row .ai-toggle { margin-top: 0; }
+.coach-link { padding: 10px 16px; border: 1px solid var(--primary); border-radius: 8px; background: var(--primary); color: var(--primary-contrast); font-size: 13px; font-weight: 700; cursor: pointer; }
 .ai-toggle:hover {
     opacity: 0.9;
 }

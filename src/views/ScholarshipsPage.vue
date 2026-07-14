@@ -18,6 +18,7 @@ import {
     getScamWarnings,
 } from "../services/scholarshipMatcher";
 import { showToast } from "../composables/useToast";
+import { getUserKey } from "../stores/userKey";
 
 const store = useScholarshipStore();
 const docStore = useDocumentStore();
@@ -42,14 +43,14 @@ const removedFromYours = ref<Set<string>>(new Set());
 // Load removed set from localStorage
 (function () {
     try {
-        const saved = localStorage.getItem("applywise-removed-scholarships");
+        const saved = localStorage.getItem(getUserKey("removed-scholarships"));
         if (saved) removedFromYours.value = new Set(JSON.parse(saved));
     } catch {}
 })();
 
 function saveRemovedFromYours() {
     localStorage.setItem(
-        "applywise-removed-scholarships",
+        getUserKey("removed-scholarships"),
         JSON.stringify([...removedFromYours.value]),
     );
 }
