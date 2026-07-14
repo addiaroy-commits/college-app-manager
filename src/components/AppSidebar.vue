@@ -8,17 +8,41 @@ const route = useRoute();
 const theme = useThemeStore();
 const showThemes = ref(false);
 
-const navItems = [
-    { path: "/", label: "📊 Dashboard", name: "dashboard" },
-    { path: "/colleges", label: "🏫 College List", name: "colleges" },
-    { path: "/majors", label: "🎓 Majors", name: "majors" },
-    { path: "/brag", label: "🌟 Brag Sheet", name: "brag" },
-    { path: "/essays", label: "✍️ Essays", name: "essays" },
-    { path: "/costs", label: "💰 Costs", name: "costs" },
-    { path: "/goals", label: "🎯 Goals", name: "goals" },
-    { path: "/scholarships", label: "🎓 Scholarships", name: "scholarships" },
-    { path: "/stats", label: "📊 Stats", name: "stats" },
-    { path: "/documents", label: "📁 Documents", name: "documents" },
+const navSections = [
+    {
+        label: "",
+        items: [{ path: "/", label: "📊 Dashboard", name: "dashboard" }],
+    },
+    {
+        label: "Applications",
+        items: [
+            { path: "/colleges", label: "🏫 College List", name: "colleges" },
+            { path: "/applications", label: "🗂️ Applications", name: "applications" },
+            { path: "/essays", label: "✍️ Essays", name: "essays" },
+        ],
+    },
+    {
+        label: "Profile",
+        items: [
+            { path: "/majors", label: "🎓 Majors", name: "majors" },
+            { path: "/brag", label: "🌟 Brag Sheet", name: "brag" },
+            { path: "/documents", label: "📁 Documents", name: "documents" },
+        ],
+    },
+    {
+        label: "Money",
+        items: [
+            { path: "/costs", label: "💰 Costs", name: "costs" },
+            { path: "/scholarships", label: "🎓 Scholarships", name: "scholarships" },
+        ],
+    },
+    {
+        label: "Progress",
+        items: [
+            { path: "/goals", label: "🎯 Goals", name: "goals" },
+            { path: "/stats", label: "📊 Stats", name: "stats" },
+        ],
+    },
 ];
 
 const themeOptions: { value: ThemeName; label: string }[] = [
@@ -42,14 +66,23 @@ function changeTheme(t: ThemeName) {
             <h1 class="app-name">CogApp</h1>
         </div>
         <nav class="sidebar-nav">
-            <router-link
-                v-for="item in navItems"
-                :key="item.path"
-                :to="item.path"
-                class="nav-link"
-                :class="{ active: route.name === item.name }"
-                >{{ item.label }}</router-link
+            <div
+                v-for="section in navSections"
+                :key="section.label || 'home'"
+                class="nav-section"
             >
+                <div v-if="section.label" class="nav-section-label">
+                    {{ section.label }}
+                </div>
+                <router-link
+                    v-for="item in section.items"
+                    :key="item.path"
+                    :to="item.path"
+                    class="nav-link"
+                    :class="{ active: route.name === item.name }"
+                    >{{ item.label }}</router-link
+                >
+            </div>
         </nav>
         <div class="sidebar-footer">
             <button
@@ -124,6 +157,17 @@ function changeTheme(t: ThemeName) {
     padding: 12px 8px;
     gap: 4px;
     flex: 1;
+    overflow-y: auto;
+}
+.nav-section + .nav-section {
+    margin-top: 8px;
+}
+.nav-section-label {
+    padding: 6px 16px 4px;
+    color: var(--sidebar-link);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 .nav-link {
     display: block;

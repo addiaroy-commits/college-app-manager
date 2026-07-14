@@ -1,7 +1,13 @@
 // cloudStorage.ts — replaces localStorage with Firestore for per-user data persistence
 // Every store that uses getUserKey() will use this instead for cloud sync
 
-import { saveUserData, loadUserData, getUserId } from "./firebaseService";
+import {
+  saveUserData,
+  loadUserData,
+  loadUserDataRecord,
+  getUserId,
+  type UserDataRecord,
+} from "./firebaseService";
 
 // Cache layer — keeps recently loaded data in memory for instant access
 const cache = new Map<string, any>();
@@ -23,15 +29,24 @@ export function getCloudUserId(): string | null {
  * Save data to Firestore for the current user.
  * Also saves to localStorage for offline/backup.
  */
-export async function cloudSave(key: string, data: any): Promise<void> {
+interface CloudSaveOptions {
+  skipLocalBackup?: boolean;
+  updatedAt?: number;
+}
+
+export async function cloudSave(
+  key: string,
+  data: any,
+  options: CloudSaveOptions = {},
+): Promise<void> {
   const userId = getCloudUserId();
   if (!userId) return;
   cache.set(`${userId}:${key}`, data);
-  // Always save to localStorage as backup
-  localStorage.setItem(`user-${userId}-${key}`, JSON.stringify(data));
-  // Also save to Firestore
+  if (!options.skipLocalBackup) {
+    localStorage.setItem(`user-${userId}-${key}`, JSON.stringify(data));
+  }
   try {
-    await saveUserData(userId, key, data);
+    await saveUserData(userId, key, data, options.updatedAt);
   } catch (e) {
     console.warn("Firestore save failed (offline?):", key, e);
   }
@@ -73,6 +88,31 @@ export async function cloudLoad(key: string): Promise<any | null> {
   }
 
   return null;
+}
+
+export async function cloudLoadRecord(
+  key: string,
+): Promise<UserDataRecord | null> {
+  const userId = getCloudUserId();
+  if (!userId) return null;
+
+  try {
+    const record = await loadUserDataRecord(userId, key);
+    if (record !== null) {
+      cache.set(`${userId}:${key}`, record.value);
+      return record;
+    }
+  } catch (e) {
+    console.warn("Firestore load failed:", key, e);
+  }
+
+  const local = localStorage.getItem(`user-${userId}-${key}`);
+  if (!local) return null;
+  try {
+    return { value: JSON.parse(local), updatedAt: 0 };
+  } catch {
+    return { value: local, updatedAt: 0 };
+  }
 }
 
 /**

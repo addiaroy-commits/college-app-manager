@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
+import { getUserKey } from "../stores/userKey";
 
 const router = useRouter();
 const step = ref(0);
@@ -19,44 +20,50 @@ const steps = [
         hint: "Tip: Use the 'Search Database' button to auto-fill college info from the US Department of Education!",
     },
     {
+        emoji: "🗂️",
+        title: "2. Run Your Application Command Center",
+        desc: "Turn every college into a complete application plan. Track statuses and requirements, manage tasks and reminders, organize recommendation letters, and see every important date on one calendar.",
+        hint: "Tip: Add colleges first and CogApp will automatically build a checklist for each application!",
+    },
+    {
         emoji: "🎓",
-        title: "2. Explore Majors & Minors",
+        title: "3. Explore Majors & Minors",
         desc: "Browse 100+ majors across categories like Engineering, Business, Arts, and Sciences. Set your top 3 major and minor picks, rank them, and add notes about career goals. Add your own custom majors with any category.",
         hint: "Tip: Use the category filters to quickly find majors in your field of interest!",
     },
     {
         emoji: "🌟",
-        title: "3. The Brag Sheet",
+        title: "4. The Brag Sheet",
         desc: "Everything colleges want to know about you — GPA, courses, AP scores, clubs, sports, awards, volunteering, skills, and more. Each category has its own tab with custom forms. Attach files, track years, and build your complete profile.",
         hint: "Tip: Use the '+' button next to tabs to create your own custom categories!",
     },
     {
         emoji: "✍️",
-        title: "4. Track Every Essay",
+        title: "5. Track Every Essay",
         desc: "Click any college to add essays — unlimited per school. Set essay targets and watch your progress bar fill up. Write directly in the app with a live word counter, or attach documents. Mark essays 'Done' and get a confetti celebration!",
         hint: "Tip: Use the Common App card at the top to track all 7 Common App prompts!",
     },
     {
         emoji: "💰",
-        title: "5. Track Costs & Budget",
+        title: "6. Track Costs & Budget",
         desc: "Add cost data for every college — tuition auto-fills from real government data. Set a tuition budget in Goals and see which colleges fit and which exceed. Track aid, loans, and your family contribution.",
         hint: "Tip: Pick a college from the dropdown and tuition fills automatically!",
     },
     {
         emoji: "🎯",
-        title: "6. Set Goals & Track Stats",
+        title: "7. Set Goals & Track Stats",
         desc: "Set goals for how many colleges to apply to, how many essays to write, and your budget. The Stats page shows charts and progress rings. Watch your numbers grow as you complete each milestone.",
         hint: "Tip: The Tuition Budget goal automatically checks your cost tracker data!",
     },
     {
         emoji: "📁",
-        title: "7. Document Vault",
+        title: "8. Document Vault",
         desc: "Upload transcripts, resumes, and portfolios. Every attachment from essays and the Brag Sheet automatically appears here. Search, preview, download — one unified place for every file in your application.",
         hint: "Tip: Use the search bar to find any document by name, type, or source!",
     },
     {
         emoji: "🎓",
-        title: "8. Explore Scholarships",
+        title: "9. Explore Scholarships",
         desc: "Find, organize, and complete scholarship applications. Track deadlines, required materials, and award amounts. Use the AI assistant to check eligibility and get essay outlines. Every dollar counts!",
         hint: "Tip: Use the match score to find scholarships that best fit your profile!",
     },
@@ -85,7 +92,7 @@ function skip() {
     finish();
 }
 function finish() {
-    localStorage.setItem("applywise-onboarded", "true");
+    localStorage.setItem(getUserKey("onboarded"), "true");
     router.push("/");
 }
 </script>

@@ -6,6 +6,7 @@ import { useEssayStore } from "../stores/essayStore";
 import { useDocumentStore } from "../stores/documentStore";
 import { useUserStore } from "../stores/userStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
+import { useApplicationStore } from "../stores/applicationStore";
 import { exportAllData, importAllData } from "../services/dataBackup";
 import { showToast } from "../composables/useToast";
 
@@ -15,9 +16,8 @@ const essayStore = useEssayStore();
 const docStore = useDocumentStore();
 const userStore = useUserStore();
 const scholarshipStore = useScholarshipStore();
-
-const calMonth = ref(new Date().getMonth());
-const calYear = ref(new Date().getFullYear());
+const applicationStore = useApplicationStore();
+applicationStore.ensureApplications(collegeStore.colleges);
 
 const collegeStats = computed(() => ({
     total: collegeStore.colleges.length,
@@ -40,46 +40,34 @@ const totalFees = computed(() =>
     collegeStore.colleges.reduce((s, c) => s + c.applicationFee, 0),
 );
 
-const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
+const commandStats = computed(() => ({
+    openTasks: applicationStore.tasks.filter((task) => task.status !== "Done")
+        .length,
+    submitted: applicationStore.applications.filter((application) =>
+        ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(
+            application.status,
+        ),
+    ).length,
+    pendingLetters: applicationStore.recommendations.filter(
+        (recommendation) =>
+            !["Submitted", "Declined"].includes(recommendation.status),
+    ).length,
+}));
 
-const deadlinesByDate = computed(() => {
-    const map: Record<string, typeof collegeStore.colleges> = {};
-    collegeStore.colleges.forEach((c) => {
-        if (c.deadline) {
-            if (!map[c.deadline]) map[c.deadline] = [];
-            map[c.deadline].push(c);
-        }
-    });
-    return map;
-});
-
-const scholarshipDeadlinesByDate = computed(() => {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const map: Record<string, string[]> = {};
-    scholarshipStore.scholarships.forEach((s) => {
-        if (!s.deadline) return;
-        if (new Date(s.deadline + "T00:00:00") < today) return;
-        // Only "Your Scholarships"
-        const isYours = !s.isSample || (s.docLinks.length > 0 || s.essayLinks.length > 0 || s.notes.trim().length > 0 || s.checklist.some((c: any) => c.status !== "Needed" && c.status !== "Not Needed"));
-        if (!isYours) return;
-        if (!map[s.deadline]) map[s.deadline] = [];
-        map[s.deadline].push(s.name);
-    });
-    return map;
-});
+function isTrackedScholarship(
+    scholarship: (typeof scholarshipStore.scholarships)[number],
+): boolean {
+    if (!scholarship.isSample) return true;
+    return (
+        scholarship.docLinks.length > 0 ||
+        scholarship.essayLinks.length > 0 ||
+        scholarship.notes.trim().length > 0 ||
+        scholarship.checklist.some(
+            (item) =>
+                item.status !== "Needed" && item.status !== "Not Needed",
+        )
+    );
+}
 
 const upcomingDeadlines = computed(() => {
     const today = new Date(); today.setHours(0,0,0,0);
@@ -89,22 +77,49 @@ const upcomingDeadlines = computed(() => {
             name: c.name,
             deadline: c.deadline,
             type: "college" as const,
-            category: c.category,
+            meta: c.applicationType || c.category,
         }));
     const scholarshipDeadlines = scholarshipStore.scholarships
         .filter((s) => {
             if (!s.deadline) return false;
             if (new Date(s.deadline + "T00:00:00") < today) return false;
-            // Only "Your Scholarships": user-created or customized samples
-            if (!s.isSample) return true;
-            return s.docLinks.length > 0 || s.essayLinks.length > 0 || s.notes.trim().length > 0 || s.checklist.some((c: any) => c.status !== "Needed" && c.status !== "Not Needed");
+            return isTrackedScholarship(s);
         })
         .map((s) => ({
             name: s.name,
             deadline: s.deadline,
             type: "scholarship" as const,
+            meta: "Scholarship",
         }));
-    return [...collegeDeadlines, ...scholarshipDeadlines]
+    const taskDeadlines = applicationStore.tasks
+        .filter((task) => task.status !== "Done" && task.dueDate)
+        .map((task) => ({
+            name: task.title,
+            deadline: task.dueDate,
+            type: "task" as const,
+            meta:
+                collegeStore.colleges.find(
+                    (college) => college.id === task.collegeId,
+                )?.name || task.type,
+        }));
+    const recommendationDeadlines = applicationStore.recommendations
+        .filter(
+            (recommendation) =>
+                !["Submitted", "Declined"].includes(recommendation.status) &&
+                recommendation.dueDate,
+        )
+        .map((recommendation) => ({
+            name: `${recommendation.name}'s recommendation`,
+            deadline: recommendation.dueDate,
+            type: "recommendation" as const,
+            meta: recommendation.role || "Recommendation",
+        }));
+    return [
+        ...collegeDeadlines,
+        ...scholarshipDeadlines,
+        ...taskDeadlines,
+        ...recommendationDeadlines,
+    ]
         .sort(
             (a, b) =>
                 new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
@@ -112,61 +127,15 @@ const upcomingDeadlines = computed(() => {
         .slice(0, 10);
 });
 
-const calendarDays = computed(() => {
-    const firstDay = new Date(calYear.value, calMonth.value, 1).getDay();
-    const daysInMonth = new Date(
-        calYear.value,
-        calMonth.value + 1,
-        0,
-    ).getDate();
-    const today = new Date().toISOString().split("T")[0];
-    const days: {
-        day: number;
-        date: string;
-        isToday: boolean;
-        colleges: typeof collegeStore.colleges;
-        scholarships: string[];
-    }[] = [];
-
-    for (let i = 0; i < firstDay; i++)
-        days.push({ day: 0, date: "", isToday: false, colleges: [], scholarships: [] });
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${calYear.value}-${String(calMonth.value + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        days.push({
-            day: d,
-            date: dateStr,
-            isToday: dateStr === today,
-            colleges: deadlinesByDate.value[dateStr] || [],
-            scholarships: scholarshipDeadlinesByDate.value[dateStr] || [],
-        });
-    }
-    return days;
-});
-
-function prevMonth() {
-    if (calMonth.value === 0) {
-        calMonth.value = 11;
-        calYear.value--;
-    } else calMonth.value--;
-}
-function nextMonth() {
-    if (calMonth.value === 11) {
-        calMonth.value = 0;
-        calYear.value++;
-    } else calMonth.value++;
-}
-
-function appTypeLabel(type: string) {
-    if (type === "ED") return "ED";
-    if (type === "EA") return "EA";
-    if (type === "RD") return "RD";
-    return "";
-}
-
-function appTypeClass(type: string) {
-    if (type === "ED") return "type-ed";
-    if (type === "EA") return "type-ea";
-    return "type-rd";
+function deadlineLabel(value: string): string {
+    const due = new Date(`${value}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+    if (days < 0) return `${Math.abs(days)}d overdue`;
+    if (days === 0) return "Today";
+    if (days === 1) return "Tomorrow";
+    return `In ${days} days`;
 }
 
 function navigateTo(path: string) {
@@ -234,6 +203,14 @@ void backupInput;
                     {{ essayStats.done }} Done
                 </div>
             </div>
+            <div class="summary-card command-card" @click="navigateTo('/applications')">
+                <div class="card-header">🗂️ Application Command Center</div>
+                <div class="card-big-number">{{ commandStats.openTasks }}</div>
+                <div class="card-detail">
+                    Open tasks · {{ commandStats.submitted }} submitted ·
+                    {{ commandStats.pendingLetters }} pending letters
+                </div>
+            </div>
         </div>
 
         <div class="quick-actions">
@@ -243,101 +220,39 @@ void backupInput;
             <button class="quick-btn" @click="navigateTo('/essays')">
                 ✍️ Add Essay
             </button>
+            <button class="quick-btn" @click="navigateTo('/applications')">
+                🗂️ Plan Applications
+            </button>
         </div>
 
-        <!-- Calendar + Upcoming -->
-        <div class="dash-grid">
-            <!-- Calendar -->
-            <div class="panel cal-panel">
-                <div class="cal-header">
-                    <button class="cal-nav" @click="prevMonth">◀</button>
-                    <h3>📅 {{ monthNames[calMonth] }} {{ calYear }}</h3>
-                    <button class="cal-nav" @click="nextMonth">▶</button>
+        <div class="panel">
+            <div class="panel-heading">
+                <div>
+                    <h3>⏰ Next Up</h3>
+                    <p>Your closest deadlines and overdue action items.</p>
                 </div>
-                <div class="cal-grid">
-                    <div
-                        v-for="d in [
-                            'Sun',
-                            'Mon',
-                            'Tue',
-                            'Wed',
-                            'Thu',
-                            'Fri',
-                            'Sat',
-                        ]"
-                        :key="d"
-                        class="cal-day-header"
-                    >
-                        {{ d }}
-                    </div>
-                    <div
-                        v-for="(d, i) in calendarDays"
-                        :key="i"
-                        class="cal-day"
-                        :class="{ empty: d.day === 0, today: d.isToday }"
-                    >
-                        <div v-if="d.day > 0" class="cal-content">
-                            <span
-                                class="cal-num"
-                                :class="{ today: d.isToday }"
-                                >{{ d.day }}</span
-                            >
-                            <div
-                                v-for="college in d.colleges"
-                                :key="college.id"
-                                class="cal-deadline"
-                            >
-                                <span class="cal-college-name">{{
-                                    college.name
-                                }}</span>
-                                <span
-                                    v-if="college.applicationType"
-                                    class="cal-type"
-                                    :class="
-                                        appTypeClass(college.applicationType)
-                                    "
-                                    >{{
-                                        appTypeLabel(college.applicationType)
-                                    }}</span
-                                </span
-                                >
-                            </div>
-                            <div
-                                v-for="scholarship in d.scholarships"
-                                :key="scholarship"
-                                class="cal-deadline cal-scholarship"
-                            >
-                                <span class="cal-college-name">🎓 {{ scholarship }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <button class="calendar-link" @click="navigateTo('/applications?tab=calendar')">
+                    Open full calendar
+                </button>
             </div>
-
-            <!-- Upcoming Deadlines -->
-            <div class="panel">
-                <h3>⏰ Upcoming Deadlines</h3>
-                <div v-if="upcomingDeadlines.length === 0" class="panel-empty">
-                    No deadlines set yet.
+            <div v-if="upcomingDeadlines.length === 0" class="panel-empty">
+                No deadlines set yet.
+            </div>
+            <div
+                v-for="deadline in upcomingDeadlines"
+                :key="deadline.name + deadline.deadline + deadline.type"
+                class="upcoming-row"
+            >
+                <span class="deadline-type" :class="deadline.type">
+                    {{ deadline.type }}
+                </span>
+                <div class="upcoming-info">
+                    <div class="upcoming-name">{{ deadline.name }}</div>
+                    <div class="upcoming-meta">{{ deadline.meta }}</div>
                 </div>
-                <div
-                    v-for="d in upcomingDeadlines"
-                    :key="d.name + d.deadline"
-                    class="upcoming-row"
-                >
-                    <div class="upcoming-info">
-                        <div class="upcoming-name">{{ d.name }}</div>
-                        <div class="upcoming-meta">
-                            📅 {{ d.deadline }}
-                            <span
-                                v-if="d.type === 'college'"
-                                class="cal-type"
-                                :class="d.category?.toLowerCase()"
-                                >{{ d.category }}</span
-                            >
-                            <span v-else class="cal-type" style="background:#ede9fe;color:#7c3aed;">🎓 Scholarship</span>
-                        </div>
-                    </div>
+                <div class="deadline-date">
+                    <strong>{{ deadlineLabel(deadline.deadline) }}</strong>
+                    <span>{{ deadline.deadline }}</span>
                 </div>
             </div>
         </div>
@@ -387,9 +302,15 @@ void backupInput;
 
 .summary-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 24px;
+}
+.command-card {
+    cursor: pointer;
+}
+.command-card:hover {
+    border-color: var(--accent-border);
 }
 .summary-card {
     background: var(--bg-card);
@@ -462,13 +383,6 @@ void backupInput;
     color: #1e1b4b;
 }
 
-.dash-grid {
-    display: grid;
-    grid-template-columns: 1fr 360px;
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
 .panel {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -488,107 +402,30 @@ void backupInput;
     padding: 20px 0;
 }
 
-/* Calendar */
-.cal-panel {
-    padding-bottom: 12px;
-}
-.cal-header {
+.panel-heading {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 16px;
     margin-bottom: 12px;
 }
-.cal-header h3 {
+.panel-heading p {
+    margin-top: 4px;
+    font-size: 12px;
+}
+.panel-heading h3 {
     margin: 0;
 }
-.cal-nav {
-    background: none;
+.calendar-link {
+    padding: 7px 10px;
     border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 5px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-}
-.cal-nav:hover {
-    background: var(--border-light);
-}
-.cal-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3px;
-}
-.cal-day-header {
-    text-align: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding: 4px 0;
-}
-.cal-day {
-    min-height: 72px;
-    padding: 3px;
     border-radius: 6px;
     background: var(--bg-card);
-    border: 1px solid transparent;
-}
-.cal-day.empty {
-    background: none;
-}
-.cal-day.today {
-    border-color: #1e1b4b;
-}
-.cal-content {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.cal-num {
+    color: var(--primary);
+    font: inherit;
     font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-.cal-num.today {
-    color: #1e1b4b;
-    background: rgba(30, 27, 75, 0.08);
-    border-radius: 10px;
-    display: inline-block;
-    width: 20px;
-    text-align: center;
-}
-.cal-deadline {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-}
-.cal-college-name {
-    font-size: 9px;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.cal-type {
-    padding: 0px 4px;
-    border-radius: 3px;
-    font-size: 8px;
     font-weight: 700;
-    display: inline-block;
-    width: fit-content;
-}
-.type-ed {
-    background: #fee2e2;
-    color: #dc2626;
-}
-.type-ea {
-    background: #fef3c7;
-    color: #d97706;
-}
-.type-rd {
-    background: #dbeafe;
-    color: #2563eb;
+    cursor: pointer;
 }
 
 /* Upcoming */
@@ -614,13 +451,44 @@ void backupInput;
     font-size: 12px;
     color: var(--text-secondary);
     margin-top: 2px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
-.upcoming-meta .cal-type {
+.deadline-type {
+    width: 98px;
+    padding: 4px 7px;
+    border-radius: 5px;
     font-size: 10px;
-    padding: 1px 5px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: capitalize;
+}
+.deadline-type.college {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+.deadline-type.scholarship {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+.deadline-type.task {
+    background: #fef3c7;
+    color: #92400e;
+}
+.deadline-type.recommendation {
+    background: #d1fae5;
+    color: #047857;
+}
+.deadline-date {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+}
+.deadline-date strong {
+    font-size: 12px;
+}
+.deadline-date span {
+    margin-top: 2px;
+    color: var(--text-secondary);
+    font-size: 10px;
 }
 
 .category-badge {
@@ -658,5 +526,11 @@ void backupInput;
 .doc-date {
     font-size: 13px;
     color: var(--text-secondary);
+}
+
+@media (max-width: 980px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

@@ -10,6 +10,10 @@ import {
 export const useUserStore = defineStore("user", () => {
   const currentUser = ref<{ id: string; username: string } | null>(null);
   const isLoading = ref(true);
+  let resolveAuthReady: (() => void) | null = null;
+  const authReady = new Promise<void>((resolve) => {
+    resolveAuthReady = resolve;
+  });
 
   // Listen for Firebase auth changes
   onAuthChange((firebaseUser) => {
@@ -22,14 +26,9 @@ export const useUserStore = defineStore("user", () => {
       localStorage.removeItem("applywise-session");
     }
     isLoading.value = false;
+    resolveAuthReady?.();
+    resolveAuthReady = null;
   });
-
-  // Check legacy localStorage session while Firebase loads
-  const saved = localStorage.getItem("applywise-session");
-  if (saved) {
-    currentUser.value = { id: saved, username: saved };
-    isLoading.value = false;
-  }
 
   const isLoggedIn = computed(
     () => currentUser.value !== null && !isLoading.value,
@@ -72,6 +71,10 @@ export const useUserStore = defineStore("user", () => {
     localStorage.removeItem("applywise-session");
   }
 
+  function waitForAuthReady() {
+    return authReady;
+  }
+
   return {
     currentUser,
     isLoggedIn,
@@ -80,5 +83,6 @@ export const useUserStore = defineStore("user", () => {
     signup,
     login,
     logout,
+    waitForAuthReady,
   };
 });

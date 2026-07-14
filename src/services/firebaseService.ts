@@ -28,6 +28,11 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+export interface UserDataRecord {
+  value: any;
+  updatedAt: number;
+}
+
 // ── Auth ──
 export function loginUser(email: string, password: string) {
   // Firebase requires email format, so we convert username to email-like
@@ -62,31 +67,48 @@ export async function saveUserData(
   userId: string,
   key: string,
   data: any,
+  updatedAt = Date.now(),
 ): Promise<void> {
   await setDoc(doc(db, "users", userId, "data", key), {
     value: JSON.stringify(data),
+    updatedAt,
   });
+}
+
+export async function loadUserDataRecord(
+  userId: string,
+  key: string,
+): Promise<UserDataRecord | null> {
+  const snap = await getDoc(doc(db, "users", userId, "data", key));
+  if (!snap.exists()) return null;
+  try {
+    const raw = snap.data();
+    return {
+      value: JSON.parse(raw.value),
+      updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function loadUserData(
   userId: string,
   key: string,
 ): Promise<any | null> {
-  const snap = await getDoc(doc(db, "users", userId, "data", key));
-  if (!snap.exists()) return null;
-  try {
-    return JSON.parse(snap.data().value);
-  } catch {
-    return null;
-  }
+  const record = await loadUserDataRecord(userId, key);
+  return record?.value ?? null;
 }
 
 export async function deleteUserData(
   userId: string,
   key: string,
 ): Promise<void> {
-  // Just save as null
-  await setDoc(doc(db, "users", userId, "data", key), { value: "null" });
+  await setDoc(doc(db, "users", userId, "data", key), {
+    value: "null",
+    updatedAt: Date.now(),
+    deleted: true,
+  });
 }
 
 export async function saveAllUserData(
@@ -97,6 +119,7 @@ export async function saveAllUserData(
   for (const [key, value] of Object.entries(data)) {
     batch.set(doc(db, "users", userId, "data", key), {
       value: JSON.stringify(value),
+      updatedAt: Date.now(),
     });
   }
   await batch.commit();

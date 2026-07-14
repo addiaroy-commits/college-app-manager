@@ -26,12 +26,17 @@ const defaultTabs = [
 
 const customTabs = ref<{ id: string; label: string }[]>([]);
 (function loadCustomTabs() {
-    const saved = localStorage.getItem("applywise-brag-custom-tabs");
-    if (saved) customTabs.value = JSON.parse(saved);
+    const saved = localStorage.getItem(getUserKey("brag-custom-tabs"));
+    const legacy = localStorage.getItem("applywise-brag-custom-tabs");
+    if (!saved && legacy) {
+        localStorage.setItem(getUserKey("brag-custom-tabs"), legacy);
+    }
+    const raw = saved || legacy;
+    if (raw) customTabs.value = JSON.parse(raw);
 })();
 function saveCustomTabs() {
     localStorage.setItem(
-        "applywise-brag-custom-tabs",
+        getUserKey("brag-custom-tabs"),
         JSON.stringify(customTabs.value),
     );
 }

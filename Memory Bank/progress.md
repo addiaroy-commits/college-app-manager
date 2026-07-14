@@ -8,15 +8,28 @@
 ## Pages & Features
 
 ### Dashboard
-- Summary cards: Colleges, Essays, Documents, Scholarships
-- Upcoming deadlines panel (colleges + scholarships, future-only, top 10)
-- Calendar view with college deadlines + scholarship dots
+- Summary cards: Colleges, Essays, and application command-center progress
+- Compact Next Up agenda for colleges, tasks, recommendations, and scholarships
+- Full calendar lives in Applications to avoid duplicate calendar experiences
 - Quick stats: reach/target/safety, essay status breakdown
 
 ### College List
 - Search 7,000+ colleges via College Scorecard database
 - Add manually or search, categorize (Reach/Target/Safety), set deadlines (ED/EA/RD)
 - Filter, search, organize
+
+### Application Command Center
+- Automatic per-college application checklists with custom requirements and due dates
+- Essay and recommendation checklist progress comes directly from their real trackers
+- Checklist dates inherit the college deadline unless the user sets a custom override
+- Application pipeline from Not Started through submission and final decisions
+- Readiness suggestions and incomplete-checklist warnings keep status and progress aligned
+- Applicant portal details, submission dates, decision dates, and notes
+- Task manager with links to existing essays, checklist items, recommendations, and documents
+- Linked tasks automatically complete when their source work is complete
+- Recommendation tracker with request/submission dates, college assignments, and thank-you status
+- Combined calendar for college, checklist, task, recommendation, and scholarship deadlines
+- Data syncs through Firebase and is included in JSON backup/restore
 
 ### Majors & Minors
 - Browse 100+ majors across categories
@@ -79,9 +92,11 @@
 - Search, preview, download
 
 ### Onboarding
-- Steps follow sidebar tab order: College List → Majors → Brag Sheet → Essays → Costs → Goals & Stats → Documents → Scholarships
+- Steps follow sidebar tab order: College List → Applications → Majors → Brag Sheet → Essays → Costs → Goals & Stats → Documents → Scholarships
 
 ## Cross-Page Integrations
+- Application Command Center totals and shortcut on the Dashboard
+- College List entries automatically receive application checklists
 - Scholarship deadlines on Dashboard calendar + upcoming list
 - Scholarship money in Costs tab
 - Scholarship goals with auto-progress in Goals page
@@ -91,7 +106,11 @@
 - Essay linking between Essay Tracker and Scholarships
 
 ## Sidebar Order
-Dashboard → College List → Majors → Brag Sheet → Essays → Costs → Goals → Scholarships → Stats → Documents
+- Dashboard
+- Applications: College List, Applications, Essays
+- Profile: Majors, Brag Sheet, Documents
+- Money: Costs, Scholarships
+- Progress: Goals, Stats
 
 ## Bug Fixes
 - Essay Tracker: Common App card click not opening (missing `showCommonApp` ref)
@@ -103,3 +122,13 @@ Dashboard → College List → Majors → Brag Sheet → Essays → Costs → Go
 - Goals: Add button silent failure (missing validation alerts)
 - Dashboard: past deadlines showing in upcoming list
 - Dashboard: scholarship deadlines from untouched samples showing
+- Auth: protected routes now wait for Firebase Auth before deciding login state
+- Auth: legacy localStorage sessions are no longer trusted as proof of login
+- Cloud Sync: localStorage watcher no longer recursively triggers Firestore writes
+- Cloud Sync: per-key timestamps prevent older cloud data from blindly overwriting newer local data
+- Storage: IndexedDB migration is per-user and runs after authenticated sync setup
+- Brag Sheet: custom tabs now save per user instead of globally
+- Onboarding: completion now saves per user instead of globally
+- Scholarships: match scoring now reads the real Brag Sheet storage key
+- PWA: service worker registration is production-only and cache strategy is less stale-prone
+- Cleanup: removed generated JavaScript copies from `src/`

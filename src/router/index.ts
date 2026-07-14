@@ -13,6 +13,7 @@ import CostTracker from "../views/CostTracker.vue";
 import OnboardingPage from "../views/OnboardingPage.vue";
 import MajorsPage from "../views/MajorsPage.vue";
 import ScholarshipsPage from "../views/ScholarshipsPage.vue";
+import { getUserKey } from "../stores/userKey";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -55,6 +56,11 @@ const router = createRouter({
     { path: "/", name: "dashboard", component: Dashboard },
     { path: "/colleges", name: "colleges", component: CollegeList },
     {
+      path: "/applications",
+      name: "applications",
+      component: () => import("../views/ApplicationCommandCenter.vue"),
+    },
+    {
       path: "/essays/college/:collegeId",
       name: "college-essays",
       component: () => import("../views/CollegeEssaysPage.vue"),
@@ -78,15 +84,16 @@ const router = createRouter({
 });
 
 // Guard: redirect to login if not logged in
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const userStore = useUserStore();
+  await userStore.waitForAuthReady();
   if (to.meta.guest) return true;
   if (!userStore.isLoggedIn) return "/login";
 
   // Show onboarding first time
   if (
     to.name !== "onboarding" &&
-    !localStorage.getItem("applywise-onboarded")
+    !localStorage.getItem(getUserKey("onboarded"))
   ) {
     return "/onboarding";
   }

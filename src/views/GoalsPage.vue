@@ -5,6 +5,7 @@ import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useCostStore } from "../stores/costStore";
 import { useScholarshipStore } from "../stores/scholarshipStore";
+import { useApplicationStore } from "../stores/applicationStore";
 import { getUserKey } from "../stores/userKey";
 
 const goalStore = useGoalStore();
@@ -12,6 +13,8 @@ const collegeStore = useCollegeStore();
 const essayStore = useEssayStore();
 const costStore = useCostStore();
 const scholarshipStore = useScholarshipStore();
+const applicationStore = useApplicationStore();
+applicationStore.ensureApplications(collegeStore.colleges);
 
 const showForm = ref(false);
 const editingId = ref<string | null>(null);
@@ -27,7 +30,7 @@ const form = ref({
 const goalTypes: { value: Goal["type"]; label: string; unit: string }[] = [
     { value: "tuition", label: "🎓 Tuition Budget", unit: "$" },
     { value: "budget", label: "💰 Total App Fee Budget", unit: "$" },
-    { value: "colleges", label: "🏫 College Applications", unit: "colleges" },
+    { value: "colleges", label: "🏫 Applications Submitted", unit: "applications" },
     { value: "essays", label: "✍️ Essays", unit: "essays" },
     { value: "scholarship", label: "🎓 Scholarship Money Won", unit: "$" },
     { value: "sat", label: "📝 SAT Score", unit: "points" },
@@ -38,7 +41,14 @@ const goalTypes: { value: Goal["type"]; label: string; unit: string }[] = [
 const totalFees = computed(() =>
     collegeStore.colleges.reduce((sum, c) => sum + (c.applicationFee || 0), 0),
 );
-const totalColleges = computed(() => collegeStore.colleges.length);
+const submittedApplications = computed(
+    () =>
+        applicationStore.applications.filter((application) =>
+            ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(
+                application.status,
+            ),
+        ).length,
+);
 const doneEssays = computed(
     () => essayStore.essays.filter((e) => e.status === "Done").length,
 );
@@ -114,7 +124,7 @@ function getTuitionColleges(
 function getProgress(goal: Goal): { current: number; percent: number } {
     let current = 0;
     if (goal.type === "budget") current = totalFees.value;
-    else if (goal.type === "colleges") current = totalColleges.value;
+    else if (goal.type === "colleges") current = submittedApplications.value;
     else if (goal.type === "essays") current = doneEssays.value;
     else if (goal.type === "scholarship") current = scholarshipWonAmount.value;
     else if (goal.type === "sat") current = currentSatScore.value;

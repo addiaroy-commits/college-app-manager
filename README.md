@@ -4,8 +4,9 @@ Your all-in-one college application organizer. Every college, every essay, every
 
 ## Features
 
-- **Dashboard** — Calendar, upcoming deadlines, summary cards for colleges, essays, documents, and scholarships
+- **Dashboard** — Summary cards and one compact agenda for the closest application, task, recommendation, and scholarship deadlines
 - **College List** — Search 7,000+ US colleges, categorize (Reach/Target/Safety), set deadlines (ED/EA/RD)
+- **Application Command Center** — Per-college checklists, application statuses, linked tasks, recommendation letters, and one combined deadline calendar
 - **Majors & Minors** — Browse 100+ majors, rank top 3 picks, add custom majors
 - **Brag Sheet** — SAT/ACT scores with superscore, GPA with selectable scales, AP scores, clubs, sports, awards, volunteering, skills, family
 - **Essay Tracker** — College essays, Common App prompts (7), Scholarship & Other essays with word count, status tracking, document attachments
@@ -14,6 +15,8 @@ Your all-in-one college application organizer. Every college, every essay, every
 - **Goals** — Set targets for tuition, applications, essays, scholarships, SAT/ACT scores with auto-progress bars
 - **Stats** — Charts, progress rings, scholarship analytics, SAT/ACT stats
 - **Document Vault** — Upload, preview, download files from all sources (Vault, Essays, Brag Sheet, Scholarships)
+- **Cloud Sync** — Firebase-backed login and Firestore data sync across devices, with local backup
+- **Installable App** — PWA manifest and production service worker for install/offline support
 
 ## Tech Stack
 
@@ -24,7 +27,11 @@ Your all-in-one college application organizer. Every college, every essay, every
 | Vite | Build tool |
 | Pinia | State management |
 | Vue Router | Client-side routing |
-| localStorage | Data persistence (per-user keys) |
+| Firebase Auth | User signup, login, logout, and sessions |
+| Firestore | Cloud data sync |
+| localStorage | Per-user local cache and backup |
+| IndexedDB | Larger file storage |
+| Service Worker | Production offline/install support |
 
 ## Quick Start
 
@@ -45,11 +52,11 @@ npm run build
 src/
 ├── components/     # Reusable UI components (AppSidebar.vue)
 ├── router/         # Vue Router configuration
-├── services/       # Business logic & API placeholders
+├── services/       # Firebase, cloud sync, storage, backup, matching helpers
 ├── stores/         # Pinia stores (essay, college, scholarship, etc.)
 ├── views/          # Page components
 ├── App.vue         # Root component
-├── main.ts         # Entry point
+├── main.ts         # Entry point + cloud sync engine
 └── style.css       # Global styles
 ```
 
@@ -59,10 +66,13 @@ src/
 
 ## Roadmap
 
-- [ ] IndexedDB migration for larger data sets
+- [x] IndexedDB migration for larger file data
+- [x] Firebase login and cloud data sync
+- [x] Export/Import backups (JSON)
+- [x] Application command center with checklists, tasks, recommendations, reminders, and calendar
 - [ ] AI counselor with real API integration
-- [ ] Calendar improvements (drag & drop, recurring deadlines)
-- [ ] Export/Import backups (JSON, CSV)
+- [ ] Calendar improvements (drag & drop, recurring tasks)
+- [ ] CSV export/import
 - [ ] Notifications for upcoming deadlines
 - [ ] Scholarship matching via external APIs
 - [ ] Mobile optimization
@@ -70,7 +80,6 @@ src/
 - [ ] Accessibility improvements (WCAG 2.1)
 - [ ] Settings page (profile, preferences, data export)
 - [ ] Demo mode with pre-populated data
-- [ ] Recommendation letter tracker
 
 ## License
 

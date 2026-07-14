@@ -67,7 +67,7 @@ export function calculateMatchScore(scholarship: Scholarship): number {
 
   // --- 1. GPA match (+20) ---
   // Read brag items from localStorage; look for category "gpa" → data.unweightedGPA
-  const bragItems = readJson<any[]>(getUserKey("brag-items"), []);
+  const bragItems = readJson<any[]>(getUserKey("brag"), []);
   const hasProfile = bragItems.length > 0;
 
   if (scholarship.minGpa > 0) {

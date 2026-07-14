@@ -5,8 +5,8 @@ import { getUserKey } from "../stores/userKey";
 const ALL_KEYS = [
   "colleges", "essays", "documents", "brag", "costs",
   "scholarships", "scholarship-goals", "goals", "top-picks",
-  "custom-majors", "sat-act", "essay-targets",
-  "applywise-brag-custom-tabs", "applywise-onboarded",
+  "custom-majors", "sat-act", "essay-targets", "brag-custom-tabs",
+  "command-center", "onboarded",
 ];
 
 export interface BackupData {

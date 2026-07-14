@@ -5,20 +5,20 @@
 import { saveFile, parseFileString } from "./fileStorage";
 import { getUserKey } from "../stores/userKey";
 
-const MIGRATION_KEY = "cogapp-indexeddb-migrated";
+const MIGRATION_KEY = "__indexeddb-migrated";
 
 /**
  * Check if migration has already been completed.
  */
 export function isMigrated(): boolean {
-  return localStorage.getItem(MIGRATION_KEY) === "true";
+  return localStorage.getItem(getUserKey(MIGRATION_KEY)) === "true";
 }
 
 /**
  * Mark migration as complete.
  */
 function markMigrated(): void {
-  localStorage.setItem(MIGRATION_KEY, "true");
+  localStorage.setItem(getUserKey(MIGRATION_KEY), "true");
 }
 
 /**
