@@ -15,6 +15,7 @@ src/**/*.js
 
 # Cache
 .cache
+.firebase/
 *.tsbuildinfo
 
 # Logs
