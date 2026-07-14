@@ -58,3 +58,33 @@ Okay next thing I want to add is a MAP showing the colege list of the user on a 
 
 - [ ] **SAT/ACT Tab in Brag Sheet** 📝 — Track SAT, ACT, and other test scores with dates
 - [ ] **Scholarships Tab** 🎓 — Complete separate page: scholarship name, amount, deadline, requirements, status, link
+
+      **Essay system**
+Essay reuse mapper
+AI Essay Coach
+AI Application Advisor
+
+**Money system**
+Financial-aid checklist
+Net-cost comparison
+Scholarship application pipeline
+
+**Complete product experience**
+Settings page
+Mobile improvements
+Demo mode
+Parent/counselor view
+Notifications
+
+
+We should test these complete journeys:
+Create an account, log out, and log back in
+Add a college, application, essay, deadline, and document
+Confirm everything survives refreshes and different logins
+Test Demo Mode without affecting real data
+Test mobile navigation, notifications, backup/restore, and dark themes
+Save a stable project checkpoint
+**AN AFTER COLLEGE SPACE. 
+**AI STUDIO BE BOLDED OR SMTH
+**FORGOT PASSWORD BUTTON
+**WEBSITE HAS TO E BETTER
