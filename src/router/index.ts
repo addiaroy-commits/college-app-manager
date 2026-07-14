@@ -25,6 +25,12 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: "/welcome",
+      name: "welcome",
+      component: () => import("../views/LandingPage.vue"),
+      meta: { guest: true },
+    },
+    {
       path: "/majors",
       name: "majors",
       component: MajorsPage,
@@ -107,8 +113,11 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const userStore = useUserStore();
   await userStore.waitForAuthReady();
+  if (to.name === "welcome" && userStore.isLoggedIn) return "/";
   if (to.meta.guest) return true;
-  if (!userStore.isLoggedIn) return "/login";
+  if (!userStore.isLoggedIn) {
+    return to.name === "dashboard" ? "/welcome" : "/login";
+  }
 
   // Show onboarding first time
   if (

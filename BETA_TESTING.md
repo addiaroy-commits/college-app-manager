@@ -49,6 +49,7 @@ Use consistent fake data so screenshots and calculations are easy to compare.
 
 Run these tests before every beta release.
 
+- [ ] `CRIT-00` Open the public homepage while logged out and select Get started. Expected: the landing page loads cleanly and the button opens Signup.
 - [ ] `CRIT-01` Create a new account with matching passwords. Expected: account is created and onboarding opens.
 - [ ] `CRIT-02` Log out and log back in. Expected: the same account opens with its data intact.
 - [ ] `CRIT-03` Add Alpha University, refresh the page, and navigate away and back. Expected: the college remains and the app does not repeatedly refresh.
@@ -67,6 +68,13 @@ Run these tests before every beta release.
 
 ## 1. Signup, Login, And Onboarding
 
+- [ ] `AUTH-00A` Visit `/` while logged out. Expected: the public CogApp homepage opens instead of the private dashboard.
+- [ ] `AUTH-00B` Use every Get started button on the public homepage. Expected: each opens Signup.
+- [ ] `AUTH-00C` Use Sign in from the header and footer. Expected: each opens Login.
+- [ ] `AUTH-00D` Use the Features, How it works, and Privacy links. Expected: the page scrolls to the correct section.
+- [ ] `AUTH-00E` Switch Dashboard, Essays, and Costs in the product preview. Expected: the preview changes without navigating away.
+- [ ] `AUTH-00F` Open the homepage at phone width. Expected: text, buttons, preview, sections, and footer fit without horizontal scrolling.
+- [ ] `AUTH-00G` Visit `/welcome` while logged in. Expected: the app redirects to Dashboard.
 - [ ] `AUTH-01` Submit signup with blank fields. Expected: account is not created.
 - [ ] `AUTH-02` Use a password shorter than four characters. Expected: a clear validation message appears.
 - [ ] `AUTH-03` Use mismatched password confirmation. Expected: "Passwords don't match" appears.
