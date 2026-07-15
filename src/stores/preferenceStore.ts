@@ -43,4 +43,3 @@ export const usePreferenceStore = defineStore("preferences", () => {
 
   return { preferences, update };
 });
-

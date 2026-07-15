@@ -4,7 +4,6 @@ function dateFromToday(days: number): string {
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
 }
-
 function demoPrefix(userId: string): string {
   return `demo-${userId}-`;
 }
@@ -112,4 +111,3 @@ export function exitDemoMode(): void {
   keys.forEach((key) => localStorage.removeItem(key));
   localStorage.removeItem("applywise-demo-user");
 }
-

@@ -84,7 +84,7 @@ Confirm everything survives refreshes and different logins
 Test Demo Mode without affecting real data
 Test mobile navigation, notifications, backup/restore, and dark themes
 Save a stable project checkpoint
-**AN AFTER COLLEGE SPACE. 
+**AN AFTER COLLEGE SPACE.
 **AI STUDIO BE BOLDED OR SMTH
 **FORGOT PASSWORD BUTTON
 **WEBSITE HAS TO E BETTER
