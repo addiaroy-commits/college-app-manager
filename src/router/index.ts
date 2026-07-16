@@ -113,7 +113,13 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const userStore = useUserStore();
   await userStore.waitForAuthReady();
-  if (to.name === "welcome" && userStore.isLoggedIn) return "/";
+  if (
+    to.name === "welcome" &&
+    userStore.isLoggedIn &&
+    to.query.preview !== "1"
+  ) {
+    return "/";
+  }
   if (to.meta.guest) return true;
   if (!userStore.isLoggedIn) {
     return to.name === "dashboard" ? "/welcome" : "/login";
