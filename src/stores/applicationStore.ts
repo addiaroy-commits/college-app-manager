@@ -10,6 +10,7 @@ export type ApplicationStatus =
   | "Submitted"
   | "Accepted"
   | "Waitlisted"
+  | "Deferred"
   | "Rejected"
   | "Withdrawn";
 
@@ -89,11 +90,32 @@ export interface Recommendation {
   notes: string;
 }
 
+export type LociStatus = "Draft" | "Ready" | "Sent";
+
+export interface LetterOfContinuedInterest {
+  id: string;
+  collegeId: string;
+  status: LociStatus;
+  dueDate: string;
+  sentDate: string;
+  recipientName: string;
+  recipientTitle: string;
+  subject: string;
+  opening: string;
+  continuedInterest: string;
+  updates: string;
+  collegeFit: string;
+  closing: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface CommandCenterData {
   version: number;
   applications: CollegeApplication[];
   tasks: ApplicationTask[];
   recommendations: Recommendation[];
+  lociLetters: LetterOfContinuedInterest[];
 }
 
 const defaultChecklistLabels = [
@@ -122,10 +144,11 @@ function makeChecklist(): ApplicationChecklistItem[] {
 
 function emptyData(): CommandCenterData {
   return {
-    version: 1,
+    version: 2,
     applications: [],
     tasks: [],
     recommendations: [],
+    lociLetters: [],
   };
 }
 
@@ -133,6 +156,7 @@ export const useApplicationStore = defineStore("application-command", () => {
   const applications = ref<CollegeApplication[]>([]);
   const tasks = ref<ApplicationTask[]>([]);
   const recommendations = ref<Recommendation[]>([]);
+  const lociLetters = ref<LetterOfContinuedInterest[]>([]);
 
   (function load() {
     try {
@@ -146,20 +170,25 @@ export const useApplicationStore = defineStore("application-command", () => {
       recommendations.value = Array.isArray(parsed.recommendations)
         ? parsed.recommendations
         : [];
+      lociLetters.value = Array.isArray(parsed.lociLetters)
+        ? parsed.lociLetters
+        : [];
     } catch {
       const fresh = emptyData();
       applications.value = fresh.applications;
       tasks.value = fresh.tasks;
       recommendations.value = fresh.recommendations;
+      lociLetters.value = fresh.lociLetters;
     }
   })();
 
   function save() {
     const data: CommandCenterData = {
-      version: 1,
+      version: 2,
       applications: applications.value,
       tasks: tasks.value,
       recommendations: recommendations.value,
+      lociLetters: lociLetters.value,
     };
     localStorage.setItem(getUserKey("command-center"), JSON.stringify(data));
   }
@@ -302,10 +331,36 @@ export const useApplicationStore = defineStore("application-command", () => {
     save();
   }
 
+  function addLociLetter(
+    letter: Omit<LetterOfContinuedInterest, "id" | "createdAt" | "updatedAt">,
+  ): LetterOfContinuedInterest {
+    const now = new Date().toISOString();
+    const created = { ...letter, id: makeId(), createdAt: now, updatedAt: now };
+    lociLetters.value.push(created);
+    save();
+    return created;
+  }
+
+  function updateLociLetter(
+    id: string,
+    updates: Partial<LetterOfContinuedInterest>,
+  ) {
+    const letter = lociLetters.value.find((item) => item.id === id);
+    if (!letter) return;
+    Object.assign(letter, updates, { updatedAt: new Date().toISOString() });
+    save();
+  }
+
+  function deleteLociLetter(id: string) {
+    lociLetters.value = lociLetters.value.filter((letter) => letter.id !== id);
+    save();
+  }
+
   return {
     applications,
     tasks,
     recommendations,
+    lociLetters,
     ensureApplications,
     updateApplication,
     updateChecklistItem,
@@ -317,5 +372,8 @@ export const useApplicationStore = defineStore("application-command", () => {
     addRecommendation,
     updateRecommendation,
     deleteRecommendation,
+    addLociLetter,
+    updateLociLetter,
+    deleteLociLetter,
   };
 });

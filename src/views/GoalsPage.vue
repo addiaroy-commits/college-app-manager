@@ -44,7 +44,7 @@ const totalFees = computed(() =>
 const submittedApplications = computed(
     () =>
         applicationStore.applications.filter((application) =>
-            ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(
+            ["Submitted", "Accepted", "Waitlisted", "Deferred", "Rejected"].includes(
                 application.status,
             ),
         ).length,

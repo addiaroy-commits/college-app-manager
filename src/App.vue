@@ -35,19 +35,23 @@ useThemeStore();
 }
 .app-layout {
     display: flex;
-    min-height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
 }
 .main-content {
     flex: 1;
     min-width: 0;
+    height: 100dvh;
     padding: 32px;
+    overflow: auto;
+    overscroll-behavior: contain;
     background: var(--bg-page);
     transition: background 0.3s;
 }
 
 @media (max-width: 760px) {
-    .app-layout { display: block; }
-    .main-content { width: 100%; padding: 76px 14px 86px; overflow-x: hidden; }
+    .app-layout { display: block; height: 100dvh; overflow: hidden; }
+    .main-content { width: 100%; height: 100dvh; padding: 76px 14px 86px; overflow-x: hidden; overflow-y: auto; }
 }
 
 /* Page Transitions */

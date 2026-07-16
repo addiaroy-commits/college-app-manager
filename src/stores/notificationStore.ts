@@ -1,13 +1,10 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { useRouter } from "vue-router";
-import { useCollegeStore } from "./collegeStore";
-import { useApplicationStore } from "./applicationStore";
-import { useScholarshipStore } from "./scholarshipStore";
-import { useResearchStore } from "./researchStore";
 import { usePreferenceStore } from "./preferenceStore";
 import { getUserKey } from "./userKey";
 import { isDemoMode } from "../services/demoMode";
+import { useDeadlineTimeline } from "../composables/useDeadlineTimeline";
 
 export type NotificationUrgency = "overdue" | "urgent" | "soon" | "upcoming";
 
@@ -45,90 +42,28 @@ function readIdsFromStorage(): string[] {
 
 export const useNotificationStore = defineStore("notifications", () => {
   const router = useRouter();
-  const colleges = useCollegeStore();
-  const applications = useApplicationStore();
-  const scholarships = useScholarshipStore();
-  const research = useResearchStore();
   const preferences = usePreferenceStore();
+  const { events: timelineEvents } = useDeadlineTimeline();
   const readIds = ref<string[]>(readIdsFromStorage());
 
   const notifications = computed<AppNotification[]>(() => {
     if (!preferences.preferences.notificationsEnabled) return [];
     const reminderDays = preferences.preferences.reminderDays;
     const items: AppNotification[] = [];
-    const add = (
-      id: string,
-      title: string,
-      detail: string,
-      date: string,
-      route: string,
-    ) => {
-      if (!date) return;
-      const daysAway = dayDifference(date);
-      if (daysAway > reminderDays || daysAway < -30) return;
-      items.push({ id, title, detail, date, daysAway, urgency: urgency(daysAway), route });
-    };
-
-    colleges.colleges.forEach((college) => {
-      const application = applications.applications.find(
-        (item) => item.collegeId === college.id,
-      );
-      if (["Submitted", "Accepted", "Waitlisted", "Rejected", "Withdrawn"].includes(application?.status || "")) return;
-      add(
-        `college-${college.id}-${college.deadline}`,
-        `${college.name} deadline`,
-        `${college.applicationType || college.category} application`,
-        college.deadline,
-        "/applications",
-      );
-    });
-
-    applications.tasks.forEach((task) => {
-      if (task.status === "Done") return;
-      const college = colleges.colleges.find((item) => item.id === task.collegeId);
-      add(
-        `task-${task.id}-${task.dueDate}`,
-        task.title,
-        college?.name || task.type,
-        task.dueDate,
-        "/applications",
-      );
-    });
-
-    applications.recommendations.forEach((recommendation) => {
-      if (["Submitted", "Declined"].includes(recommendation.status)) return;
-      add(
-        `recommendation-${recommendation.id}-${recommendation.dueDate}`,
-        `${recommendation.name}'s recommendation`,
-        recommendation.role || "Recommendation letter",
-        recommendation.dueDate,
-        "/applications",
-      );
-    });
-
-    scholarships.scholarships.forEach((scholarship) => {
-      const isActive = !scholarship.isSample || scholarship.status !== "Not Started";
-      if (!isActive || ["Won", "Rejected"].includes(scholarship.status)) return;
-      add(
-        `scholarship-${scholarship.id}-${scholarship.deadline}`,
-        scholarship.name,
-        `$${scholarship.awardAmount.toLocaleString()} scholarship deadline`,
-        scholarship.deadline,
-        "/scholarships",
-      );
-    });
-
-    research.visits.forEach((visit) => {
-      if (dayDifference(visit.date) < 0) return;
-      const college = colleges.colleges.find((item) => item.id === visit.collegeId);
-      add(
-        `visit-${visit.id}-${visit.date}`,
-        `${college?.name || "College"}: ${visit.type}`,
-        visit.contact || "Visit or interview",
-        visit.date,
-        "/research",
-      );
-    });
+    for (const event of timelineEvents.value) {
+      const daysAway = dayDifference(event.date);
+      const eventWindow = event.reminderDays ?? reminderDays;
+      if (daysAway > eventWindow || daysAway < -30) continue;
+      items.push({
+        id: `${event.id}-${event.date}`,
+        title: event.title,
+        detail: event.detail,
+        date: event.date,
+        daysAway,
+        urgency: urgency(daysAway),
+        route: event.route,
+      });
+    }
 
     return items.sort((a, b) => a.daysAway - b.daysAway || a.title.localeCompare(b.title));
   });

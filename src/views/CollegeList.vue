@@ -4,11 +4,17 @@ import { useCollegeStore } from "../stores/collegeStore";
 import type { College } from "../stores/collegeStore";
 import { showToast } from "../composables/useToast";
 import {
+    useApplicationStore,
+    type ApplicationStatus,
+} from "../stores/applicationStore";
+import {
   calculateFitScore,
   useResearchStore,
 } from "../stores/researchStore";
 
 const store = useCollegeStore();
+const applicationStore = useApplicationStore();
+applicationStore.ensureApplications(store.colleges);
 const researchStore = useResearchStore();
 researchStore.ensureProfiles(store.colleges);
 const showForm = ref(false);
@@ -23,6 +29,27 @@ const dbResults = ref<any[]>([]);
 const dbLoading = ref(false);
 const dbError = ref("");
 const API_KEY = "zKyFKBrMRzC6NIuouJuFSY7geWfgiR6A010MUaJO";
+
+function applicationStatus(collegeId: string): ApplicationStatus | null {
+    return (
+        applicationStore.applications.find(
+            (application) => application.collegeId === collegeId,
+        )?.status ?? null
+    );
+}
+
+function decisionCardClass(collegeId: string): string {
+    const status = applicationStatus(collegeId);
+    if (status === "Accepted") return "decision-accepted";
+    if (status === "Waitlisted" || status === "Deferred")
+        return "decision-pending";
+    if (status === "Rejected") return "decision-rejected";
+    return "";
+}
+
+function isDecisionStatus(status: ApplicationStatus | null): boolean {
+    return status !== null && ["Accepted", "Waitlisted", "Deferred", "Rejected"].includes(status);
+}
 
 const form = ref({
     name: "",
@@ -376,6 +403,7 @@ function openView(college: any) {
                 v-for="college in filteredColleges"
                 :key="college.id"
                 class="college-card"
+                :class="decisionCardClass(college.id)"
             >
                 <div class="college-info">
                     <div class="college-name-row">
@@ -406,6 +434,13 @@ function openView(college: any) {
                     :class="college.category.toLowerCase()"
                     >{{ college.category }}</span
                 >
+                <span
+                    v-if="isDecisionStatus(applicationStatus(college.id))"
+                    class="decision-badge"
+                    :class="decisionCardClass(college.id)"
+                >
+                    {{ applicationStatus(college.id) }}
+                </span>
                 <button class="btn-view" @click="openView(college)">
                     View
                 </button>
@@ -439,6 +474,12 @@ function openView(college: any) {
                             :class="selectedCollege.category.toLowerCase()"
                             >{{ selectedCollege.category }}</span
                         >
+                    </div>
+                    <div v-if="isDecisionStatus(applicationStatus(selectedCollege.id))" class="detail-row">
+                        <span class="detail-label">Decision</span>
+                        <span class="decision-badge" :class="decisionCardClass(selectedCollege.id)">
+                            {{ applicationStatus(selectedCollege.id) }}
+                        </span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Application Type</span>
@@ -693,6 +734,48 @@ function openView(college: any) {
     display: flex;
     align-items: flex-start;
     gap: 16px;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.college-card.decision-accepted {
+    border-color: #86d8b0;
+    background: #f0fdf4;
+    box-shadow: inset 4px 0 0 #16a36a;
+}
+.college-card.decision-pending {
+    border-color: #c4c8cf;
+    background: #f4f5f7;
+    box-shadow: inset 4px 0 0 #7a818c;
+}
+.college-card.decision-rejected {
+    border-color: #f3aaa7;
+    background: #fff1f1;
+    box-shadow: inset 4px 0 0 #dc4b4b;
+}
+.decision-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.decision-badge.decision-accepted {
+    border-color: #86d8b0;
+    background: #dcfce7;
+    color: #087443;
+}
+.decision-badge.decision-pending {
+    border-color: #c4c8cf;
+    background: #e5e7eb;
+    color: #4b5563;
+}
+.decision-badge.decision-rejected {
+    border-color: #f3aaa7;
+    background: #fee2e2;
+    color: #b42323;
 }
 .college-info {
     flex: 1;

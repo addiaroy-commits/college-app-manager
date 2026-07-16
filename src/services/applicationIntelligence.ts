@@ -286,7 +286,7 @@ export function buildApplicationAdvice(
     const checklistDone = checklist.filter((item) => item.status === "Done").length;
     const checklistScore = checklist.length ? checklistDone / checklist.length : 0;
     const essayScore = collegeEssays.length ? essayDone / collegeEssays.length : checklistScore;
-    const submitted = application && ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(application.status);
+    const submitted = application && ["Submitted", "Accepted", "Waitlisted", "Deferred", "Rejected"].includes(application.status);
     const score = submitted ? 100 : clamp(checklistScore * 72 + essayScore * 28);
     const remaining = daysUntil(college.deadline);
     const openItems = Math.max(0, checklist.length - checklistDone) + Math.max(0, collegeEssays.length - essayDone);

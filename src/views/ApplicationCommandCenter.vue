@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
+import confetti from "canvas-confetti";
 import { useRoute, useRouter } from "vue-router";
 import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useDocumentStore } from "../stores/documentStore";
-import { useScholarshipStore } from "../stores/scholarshipStore";
-import { useResearchStore } from "../stores/researchStore";
 import {
   useApplicationStore,
   type ApplicationChecklistItem,
@@ -14,6 +13,8 @@ import {
   type ChecklistStatus,
   type CollegeApplication,
   type LinkedResourceType,
+  type LetterOfContinuedInterest,
+  type LociStatus,
   type Recommendation,
   type RecommendationStatus,
   type TaskPriority,
@@ -21,36 +22,32 @@ import {
   type TaskType,
 } from "../stores/applicationStore";
 import { showToast } from "../composables/useToast";
+import {
+  useDeadlineTimeline,
+  type TimelineEvent,
+} from "../composables/useDeadlineTimeline";
 
-type TabName = "Applications" | "Tasks" | "Recommendations" | "Calendar";
-
-interface CalendarEvent {
-  id: string;
-  date: string;
-  title: string;
-  kind:
-    | "college"
-    | "checklist"
-    | "task"
-    | "recommendation"
-    | "scholarship"
-    | "visit";
-}
+type TabName =
+  | "Applications"
+  | "Tasks"
+  | "Recommendations"
+  | "Continued Interest"
+  | "Calendar";
 
 const router = useRouter();
 const route = useRoute();
 const collegeStore = useCollegeStore();
 const essayStore = useEssayStore();
 const documentStore = useDocumentStore();
-const scholarshipStore = useScholarshipStore();
-const researchStore = useResearchStore();
 const store = useApplicationStore();
 store.ensureApplications(collegeStore.colleges);
+const { eventsByDate } = useDeadlineTimeline();
 
 const tabs: { name: TabName; label: string }[] = [
   { name: "Applications", label: "Applications" },
   { name: "Tasks", label: "Tasks" },
   { name: "Recommendations", label: "Recommendations" },
+  { name: "Continued Interest", label: "Continued Interest" },
   { name: "Calendar", label: "Calendar" },
 ];
 const requestedTab = String(route.query.tab || "").toLowerCase();
@@ -61,6 +58,8 @@ const activeTab = ref<TabName>(
       ? "Tasks"
       : requestedTab === "recommendations"
         ? "Recommendations"
+        : requestedTab === "loci"
+          ? "Continued Interest"
         : "Applications",
 );
 const expandedCollegeId = ref<string | null>(null);
@@ -73,6 +72,7 @@ const applicationStatuses: ApplicationStatus[] = [
   "Submitted",
   "Accepted",
   "Waitlisted",
+  "Deferred",
   "Rejected",
   "Withdrawn",
 ];
@@ -98,6 +98,9 @@ const recommendationStatuses: RecommendationStatus[] = [
   "Submitted",
   "Declined",
 ];
+const lociStatuses: LociStatus[] = ["Draft", "Ready", "Sent"];
+const lociPromptCollegeId = ref<string | null>(null);
+const selectedLociId = ref<string | null>(null);
 
 function isAutomaticChecklistItem(item: ApplicationChecklistItem): boolean {
   return (
@@ -166,12 +169,14 @@ function automaticChecklistDetail(
     : "No recommenders assigned yet";
 }
 
-function toggleAutomaticChecklistItem(
+function setAutomaticChecklistMode(
   application: CollegeApplication,
   item: ApplicationChecklistItem,
+  event: Event,
 ) {
+  const mode = (event.target as HTMLSelectElement).value;
   store.updateChecklistItem(application.collegeId, item.id, {
-    status: item.status === "Not Needed" ? "Not Started" : "Not Needed",
+    status: mode === "Not Needed" ? "Not Needed" : "Not Started",
   });
 }
 
@@ -250,19 +255,141 @@ function saveApplication(application: CollegeApplication) {
   store.updateApplication(application.collegeId, application);
 }
 
+function celebrateAcceptance(collegeId: string) {
+  const name = collegeName(collegeId);
+  showToast(`Accepted to ${name}! Congratulations!`);
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const colors = ["#2563eb", "#0d9488", "#f59e0b", "#ec4899", "#ffffff"];
+  confetti({
+    particleCount: 90,
+    spread: 75,
+    startVelocity: 42,
+    origin: { x: 0.3, y: 0.65 },
+    colors,
+    zIndex: 10000,
+  });
+  confetti({
+    particleCount: 90,
+    spread: 75,
+    startVelocity: 42,
+    origin: { x: 0.7, y: 0.65 },
+    colors,
+    zIndex: 10000,
+  });
+}
+
 function handleApplicationStatusChange(
   application: CollegeApplication,
   progress: number,
 ) {
   saveApplication(application);
+  if (application.status === "Accepted") {
+    celebrateAcceptance(application.collegeId);
+  }
+  if (["Waitlisted", "Deferred"].includes(application.status)) {
+    lociPromptCollegeId.value = application.collegeId;
+  }
   if (
-    ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(
+    application.status !== "Accepted" &&
+    ["Submitted", "Accepted", "Waitlisted", "Deferred", "Rejected"].includes(
       application.status,
     ) &&
     progress < 100
   ) {
     showToast(`Application saved with ${100 - progress}% still incomplete`);
   }
+}
+
+function decisionCardClass(status: ApplicationStatus): string {
+  if (status === "Accepted") return "decision-accepted";
+  if (["Waitlisted", "Deferred"].includes(status)) return "decision-pending";
+  if (status === "Rejected") return "decision-rejected";
+  return "";
+}
+
+function makeLoci(collegeId: string): LetterOfContinuedInterest {
+  const existing = store.lociLetters.find((letter) => letter.collegeId === collegeId);
+  if (existing) return existing;
+  const name = collegeName(collegeId);
+  return store.addLociLetter({
+    collegeId,
+    status: "Draft",
+    dueDate: "",
+    sentDate: "",
+    recipientName: "",
+    recipientTitle: "Admissions Committee",
+    subject: `Letter of Continued Interest - ${name}`,
+    opening: `Thank you for continuing to consider my application to ${name}.`,
+    continuedInterest: "",
+    updates: "",
+    collegeFit: "",
+    closing: "Thank you for your time and continued consideration.",
+  });
+}
+
+function openLoci(collegeId: string) {
+  const letter = makeLoci(collegeId);
+  selectedLociId.value = letter.id;
+  lociPromptCollegeId.value = null;
+  activeTab.value = "Continued Interest";
+  void router.replace({ query: { ...route.query, tab: "loci" } });
+}
+
+function dismissLociPrompt() {
+  lociPromptCollegeId.value = null;
+}
+
+const selectedLoci = computed(() =>
+  store.lociLetters.find((letter) => letter.id === selectedLociId.value) ?? null,
+);
+
+const lociCollegeOptions = computed(() =>
+  applicationRows.value.filter(
+    (row) =>
+      row.application &&
+      (["Waitlisted", "Deferred"].includes(row.application.status) ||
+        store.lociLetters.some((letter) => letter.collegeId === row.college.id)),
+  ),
+);
+
+const lociPreview = computed(() => {
+  const letter = selectedLoci.value;
+  if (!letter) return "";
+  const greeting = letter.recipientName
+    ? `Dear ${letter.recipientName},`
+    : `Dear ${letter.recipientTitle || "Admissions Committee"},`;
+  return [
+    greeting,
+    letter.opening,
+    letter.continuedInterest,
+    letter.updates,
+    letter.collegeFit,
+    letter.closing,
+    "Sincerely,",
+  ]
+    .filter((section) => section.trim())
+    .join("\n\n");
+});
+
+const lociWordCount = computed(() =>
+  lociPreview.value.trim() ? lociPreview.value.trim().split(/\s+/).length : 0,
+);
+
+function saveLoci(letter: LetterOfContinuedInterest) {
+  store.updateLociLetter(letter.id, letter);
+  showToast("Continued-interest letter saved");
+}
+
+function selectLociForCollege(collegeId: string) {
+  const letter = makeLoci(collegeId);
+  selectedLociId.value = letter.id;
+}
+
+function markLociSent(letter: LetterOfContinuedInterest) {
+  const today = new Date().toISOString().slice(0, 10);
+  store.updateLociLetter(letter.id, { status: "Sent", sentDate: letter.sentDate || today });
+  showToast(`LOCI for ${collegeName(letter.collegeId)} marked sent`);
 }
 
 function markReady(application: CollegeApplication) {
@@ -641,93 +768,6 @@ const monthNames = [
   "December",
 ];
 
-function isTrackedScholarship(
-  scholarship: (typeof scholarshipStore.scholarships)[number],
-): boolean {
-  if (!scholarship.isSample) return true;
-  return (
-    scholarship.docLinks.length > 0 ||
-    scholarship.essayLinks.length > 0 ||
-    scholarship.notes.trim().length > 0 ||
-    scholarship.checklist.some(
-      (item) => item.status !== "Needed" && item.status !== "Not Needed",
-    )
-  );
-}
-
-const eventsByDate = computed(() => {
-  const map: Record<string, CalendarEvent[]> = {};
-  const add = (event: CalendarEvent) => {
-    if (!event.date) return;
-    if (!map[event.date]) map[event.date] = [];
-    map[event.date].push(event);
-  };
-  for (const college of collegeStore.colleges) {
-    add({
-      id: `college-${college.id}`,
-      date: college.deadline,
-      title: `${college.name} deadline`,
-      kind: "college",
-    });
-  }
-  for (const application of store.applications) {
-    for (const item of application.checklist) {
-      if (
-        item.dueDate &&
-        !["Done", "Not Needed"].includes(
-          resolvedChecklistStatus(application, item),
-        )
-      ) {
-        add({
-          id: `checklist-${item.id}`,
-          date: item.dueDate,
-          title: `${collegeName(application.collegeId)}: ${item.label}`,
-          kind: "checklist",
-        });
-      }
-    }
-  }
-  for (const task of store.tasks) {
-    if (task.status !== "Done") {
-      add({
-        id: `task-${task.id}`,
-        date: task.dueDate,
-        title: task.title,
-        kind: "task",
-      });
-    }
-  }
-  for (const recommendation of store.recommendations) {
-    if (!["Submitted", "Declined"].includes(recommendation.status)) {
-      add({
-        id: `recommendation-${recommendation.id}`,
-        date: recommendation.dueDate,
-        title: `${recommendation.name}'s letter`,
-        kind: "recommendation",
-      });
-    }
-  }
-  for (const scholarship of scholarshipStore.scholarships) {
-    if (isTrackedScholarship(scholarship)) {
-      add({
-        id: `scholarship-${scholarship.id}`,
-        date: scholarship.deadline,
-        title: `${scholarship.name} deadline`,
-        kind: "scholarship",
-      });
-    }
-  }
-  for (const visit of researchStore.visits) {
-    add({
-      id: `visit-${visit.id}`,
-      date: visit.date,
-      title: `${collegeName(visit.collegeId)}: ${visit.type}`,
-      kind: "visit",
-    });
-  }
-  return map;
-});
-
 const calendarDays = computed(() => {
   const firstDay = new Date(calendarYear.value, calendarMonth.value, 1).getDay();
   const totalDays = new Date(
@@ -741,7 +781,7 @@ const calendarDays = computed(() => {
     day: number;
     date: string;
     isToday: boolean;
-    events: CalendarEvent[];
+        events: TimelineEvent[];
   }[] = [];
   for (let index = 0; index < firstDay; index++) {
     days.push({ day: 0, date: "", isToday: false, events: [] });
@@ -832,6 +872,7 @@ function nextMonth() {
           v-for="row in applicationRows"
           :key="row.college.id"
           class="application-card"
+          :class="row.application ? decisionCardClass(row.application.status) : ''"
         >
           <div class="application-summary">
             <button
@@ -874,7 +915,7 @@ function nextMonth() {
             <button @click="markReady(row.application)">Mark ready to submit</button>
           </div>
           <div
-            v-else-if="row.application && row.progress < 100 && ['Submitted', 'Accepted', 'Waitlisted', 'Rejected'].includes(row.application.status)"
+            v-else-if="row.application && row.progress < 100 && ['Submitted', 'Accepted', 'Waitlisted', 'Deferred', 'Rejected'].includes(row.application.status)"
             class="application-guidance warning"
           >
             This application is marked {{ row.application.status }}, but {{ 100 - row.progress }}% of its required checklist is still open.
@@ -951,14 +992,18 @@ function nextMonth() {
                 :key="item.id"
                 class="checklist-row"
               >
-                <div v-if="isAutomaticChecklistItem(item)" class="automatic-status">
-                  <span class="status-badge" :class="statusClass(resolvedChecklistStatus(row.application, item))">
-                    {{ resolvedChecklistStatus(row.application, item) }}
-                  </span>
-                  <button @click="toggleAutomaticChecklistItem(row.application, item)">
-                    {{ item.status === 'Not Needed' ? 'Track automatically' : 'Not needed' }}
-                  </button>
-                </div>
+                <select
+                  v-if="isAutomaticChecklistItem(item)"
+                  class="automatic-status-select"
+                  :value="item.status === 'Not Needed' ? 'Not Needed' : 'Automatic'"
+                  :aria-label="`${item.label} tracking mode`"
+                  @change="setAutomaticChecklistMode(row.application, item, $event)"
+                >
+                  <option value="Automatic">
+                    Auto · {{ resolvedChecklistStatus(row.application, item) }}
+                  </option>
+                  <option value="Not Needed">Not Needed</option>
+                </select>
                 <select
                   v-else
                   v-model="item.status"
@@ -1292,6 +1337,124 @@ function nextMonth() {
       </div>
     </template>
 
+    <template v-else-if="activeTab === 'Continued Interest'">
+      <div v-if="lociCollegeOptions.length === 0" class="empty-state section-panel">
+        <strong>No continued-interest letters needed</strong>
+        <span>When an application is marked Waitlisted or Deferred, its LOCI workspace will appear here.</span>
+        <button class="secondary-button" @click="activeTab = 'Applications'">View applications</button>
+      </div>
+
+      <div v-else class="loci-workspace">
+        <aside class="loci-list" aria-label="Continued-interest letters">
+          <div class="loci-list-heading">
+            <strong>Letters</strong>
+            <span>{{ store.lociLetters.length }} tracked</span>
+          </div>
+          <button
+            v-for="row in lociCollegeOptions"
+            :key="row.college.id"
+            class="loci-list-item"
+            :class="{ active: selectedLoci?.collegeId === row.college.id }"
+            @click="selectLociForCollege(row.college.id)"
+          >
+            <span>
+              <strong>{{ row.college.name }}</strong>
+              <small>{{ row.application?.status }}</small>
+            </span>
+            <b>{{ store.lociLetters.find(letter => letter.collegeId === row.college.id)?.status || 'Start' }}</b>
+          </button>
+        </aside>
+
+        <div v-if="!selectedLoci" class="empty-state loci-welcome">
+          <strong>Select a college to begin</strong>
+          <span>Use the structure to write a concise, specific update rather than repeating the original application.</span>
+        </div>
+
+        <div v-else class="loci-editor">
+          <section class="section-panel loci-form">
+            <div class="section-heading loci-heading">
+              <div>
+                <span class="section-kicker">Letter of Continued Interest</span>
+                <h3>{{ collegeName(selectedLoci.collegeId) }}</h3>
+              </div>
+              <span class="status-badge" :class="statusClass(selectedLoci.status)">{{ selectedLoci.status }}</span>
+            </div>
+
+            <div class="form-grid compact-form">
+              <label>
+                Status
+                <select v-model="selectedLoci.status" @change="saveLoci(selectedLoci)">
+                  <option v-for="status in lociStatuses" :key="status" :value="status">{{ status }}</option>
+                </select>
+              </label>
+              <label>
+                Send by
+                <input v-model="selectedLoci.dueDate" type="date" @change="saveLoci(selectedLoci)" />
+              </label>
+              <label>
+                Recipient name
+                <input v-model="selectedLoci.recipientName" type="text" placeholder="Dean Rivera" @change="saveLoci(selectedLoci)" />
+              </label>
+              <label>
+                Recipient title
+                <input v-model="selectedLoci.recipientTitle" type="text" placeholder="Admissions Committee" @change="saveLoci(selectedLoci)" />
+              </label>
+              <label class="wide-field">
+                Subject
+                <input v-model="selectedLoci.subject" type="text" @change="saveLoci(selectedLoci)" />
+              </label>
+            </div>
+
+            <div class="loci-sections">
+              <label>
+                Opening
+                <small>Thank them and clearly reaffirm interest.</small>
+                <textarea v-model="selectedLoci.opening" rows="3" @change="saveLoci(selectedLoci)"></textarea>
+              </label>
+              <label>
+                Continued interest
+                <small>Say whether the school remains your first choice only if that is true.</small>
+                <textarea v-model="selectedLoci.continuedInterest" rows="4" placeholder="Explain your current level of interest and why..." @change="saveLoci(selectedLoci)"></textarea>
+              </label>
+              <label>
+                Meaningful updates
+                <small>Add new grades, awards, responsibilities, projects, or achievements.</small>
+                <textarea v-model="selectedLoci.updates" rows="5" placeholder="Since submitting my application..." @change="saveLoci(selectedLoci)"></textarea>
+              </label>
+              <label>
+                College fit
+                <small>Connect recent growth to specific programs, people, or opportunities.</small>
+                <textarea v-model="selectedLoci.collegeFit" rows="5" placeholder="My interest in [specific program] has grown because..." @change="saveLoci(selectedLoci)"></textarea>
+              </label>
+              <label>
+                Closing
+                <textarea v-model="selectedLoci.closing" rows="3" @change="saveLoci(selectedLoci)"></textarea>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-button" @click="saveLoci(selectedLoci)">Save draft</button>
+              <button v-if="selectedLoci.status !== 'Sent'" class="secondary-button" @click="markLociSent(selectedLoci)">Mark sent</button>
+              <label v-else class="sent-date-field">
+                Sent
+                <input v-model="selectedLoci.sentDate" type="date" @change="saveLoci(selectedLoci)" />
+              </label>
+            </div>
+          </section>
+
+          <section class="section-panel loci-preview">
+            <div class="section-heading">
+              <div><h3>Letter preview</h3><p>{{ lociWordCount }} words · Aim for roughly 250–400</p></div>
+            </div>
+            <div class="letter-paper">
+              <strong>{{ selectedLoci.subject }}</strong>
+              <p v-for="(paragraph, index) in lociPreview.split('\n\n')" :key="index">{{ paragraph }}</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </template>
+
     <template v-else>
       <section class="section-panel calendar-panel">
         <div class="calendar-header">
@@ -1352,13 +1515,33 @@ function nextMonth() {
 
       <div class="calendar-legend">
         <span><i class="event-dot college"></i> College deadlines</span>
+        <span><i class="event-dot essay"></i> Essays</span>
+        <span><i class="event-dot financial-aid"></i> Financial aid</span>
+        <span><i class="event-dot test"></i> Test dates</span>
         <span><i class="event-dot checklist"></i> Checklist overrides</span>
         <span><i class="event-dot task"></i> Tasks</span>
         <span><i class="event-dot recommendation"></i> Recommendations</span>
+        <span><i class="event-dot loci"></i> Continued interest</span>
         <span><i class="event-dot scholarship"></i> Scholarships</span>
         <span><i class="event-dot visit"></i> Visits & interviews</span>
       </div>
     </template>
+
+    <div v-if="lociPromptCollegeId" class="decision-modal-backdrop" role="presentation">
+      <section class="decision-modal" role="dialog" aria-modal="true" aria-labelledby="loci-prompt-title">
+        <span class="decision-modal-kicker">Decision follow-up</span>
+        <h3 id="loci-prompt-title">Submit a letter of continued interest?</h3>
+        <p>
+          {{ collegeName(lociPromptCollegeId) }} is now marked
+          {{ store.applications.find(item => item.collegeId === lociPromptCollegeId)?.status }}.
+          A concise LOCI can share meaningful updates and reaffirm your interest.
+        </p>
+        <div class="decision-modal-actions">
+          <button class="primary-button" @click="openLoci(lociPromptCollegeId)">Start LOCI</button>
+          <button class="secondary-button" @click="dismissLociPrompt">Not now</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -1759,9 +1942,10 @@ function nextMonth() {
 }
 
 .status-badge.waitlisted,
+.status-badge.deferred,
 .status-badge.considering {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: #e5e7eb;
+  color: #4b5563;
 }
 
 .status-badge.rejected,
@@ -1801,6 +1985,31 @@ function nextMonth() {
 
 .application-card {
   overflow: hidden;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.application-card.decision-accepted {
+  border-color: #86d8b0;
+  background: #f0fdf4;
+  box-shadow: inset 4px 0 0 #16a36a;
+}
+
+.application-card.decision-pending {
+  border-color: #c4c8cf;
+  background: #f4f5f7;
+  box-shadow: inset 4px 0 0 #7a818c;
+}
+
+.application-card.decision-rejected {
+  border-color: #f3aaa7;
+  background: #fff1f1;
+  box-shadow: inset 4px 0 0 #dc4b4b;
+}
+
+.application-card.decision-accepted .application-details,
+.application-card.decision-pending .application-details,
+.application-card.decision-rejected .application-details {
+  background: color-mix(in srgb, currentColor 2%, var(--bg-card));
 }
 
 .application-summary {
@@ -2019,14 +2228,6 @@ textarea {
   text-decoration: none;
 }
 
-.automatic-status {
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.automatic-status button,
 .source-button,
 .linked-resource {
   padding: 0;
@@ -2432,6 +2633,21 @@ textarea {
   color: #92400e;
 }
 
+.calendar-event.essay {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.calendar-event.financial-aid {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.calendar-event.test {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .calendar-event.checklist {
   background: #ffedd5;
   color: #c2410c;
@@ -2450,6 +2666,11 @@ textarea {
 .calendar-event.visit {
   background: #fce7f3;
   color: #be185d;
+}
+
+.calendar-event.interview {
+  background: #fae8ff;
+  color: #a21caf;
 }
 
 .calendar-day small {
@@ -2492,6 +2713,18 @@ textarea {
   background: #d97706;
 }
 
+.event-dot.essay {
+  background: #0284c7;
+}
+
+.event-dot.financial-aid {
+  background: #0d9488;
+}
+
+.event-dot.test {
+  background: #dc2626;
+}
+
 .event-dot.checklist {
   background: #ea580c;
 }
@@ -2506,6 +2739,10 @@ textarea {
 
 .event-dot.visit {
   background: #db2777;
+}
+
+.event-dot.interview {
+  background: #c026d3;
 }
 
 .calendar-legend {
@@ -2523,6 +2760,205 @@ textarea {
   gap: 6px;
 }
 
+.calendar-event.loci {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.event-dot.loci {
+  background: #9333ea;
+}
+
+.loci-workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.loci-list {
+  position: sticky;
+  top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.loci-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 13px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.loci-list-heading span {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.loci-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.loci-list-item:hover,
+.loci-list-item.active {
+  background: var(--primary-light);
+}
+
+.loci-list-item span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.loci-list-item strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loci-list-item small,
+.loci-list-item b {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.loci-editor {
+  min-width: 0;
+}
+
+.loci-welcome {
+  min-height: 240px;
+  border: 1px dashed var(--border-color);
+}
+
+.loci-heading {
+  align-items: flex-start;
+}
+
+.section-kicker,
+.decision-modal-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.compact-form {
+  margin-top: 18px;
+}
+
+.loci-sections {
+  display: grid;
+  gap: 15px;
+  margin-top: 18px;
+}
+
+.loci-sections label {
+  display: flex;
+  flex-direction: column;
+}
+
+.loci-sections label > small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.sent-date-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sent-date-field input {
+  width: auto;
+  margin: 0;
+}
+
+.loci-preview {
+  margin-top: 18px;
+}
+
+.letter-paper {
+  max-width: 720px;
+  min-height: 320px;
+  padding: 30px;
+  margin: 18px auto 0;
+  border: 1px solid var(--border-color);
+  background: #ffffff;
+  color: #172033;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.letter-paper > strong {
+  display: block;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d9dde5;
+  font-family: inherit;
+}
+
+.letter-paper p {
+  margin: 16px 0 0;
+  white-space: pre-wrap;
+}
+
+.decision-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 24, 39, 0.48);
+}
+
+.decision-modal {
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+}
+
+.decision-modal h3 {
+  margin: 0 0 9px;
+  font-size: 20px;
+}
+
+.decision-modal p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.decision-modal-actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 20px;
+}
+
 @media (max-width: 980px) {
   .recommendation-grid {
     grid-template-columns: 1fr;
@@ -2535,6 +2971,10 @@ textarea {
   .application-progress {
     display: none;
   }
+
+  .loci-workspace {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 700px) {
@@ -2546,6 +2986,19 @@ textarea {
   .detail-grid,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .loci-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .loci-list {
+    position: static;
+  }
+
+  .letter-paper {
+    min-height: 240px;
+    padding: 20px;
   }
 
   .form-grid .wide-field {
@@ -2569,7 +3022,7 @@ textarea {
     grid-row: 1;
   }
 
-  .automatic-status,
+  .automatic-status-select,
   .checklist-row > select {
     grid-column: 1;
     grid-row: 2;

@@ -5,21 +5,19 @@ import { useCollegeStore } from "../stores/collegeStore";
 import { useEssayStore } from "../stores/essayStore";
 import { useDocumentStore } from "../stores/documentStore";
 import { useUserStore } from "../stores/userStore";
-import { useScholarshipStore } from "../stores/scholarshipStore";
 import { useApplicationStore } from "../stores/applicationStore";
-import { useResearchStore } from "../stores/researchStore";
 import { exportAllData, importAllData } from "../services/dataBackup";
 import { showToast } from "../composables/useToast";
+import { useDeadlineTimeline } from "../composables/useDeadlineTimeline";
 
 const router = useRouter();
 const collegeStore = useCollegeStore();
 const essayStore = useEssayStore();
 const docStore = useDocumentStore();
 const userStore = useUserStore();
-const scholarshipStore = useScholarshipStore();
 const applicationStore = useApplicationStore();
-const researchStore = useResearchStore();
 applicationStore.ensureApplications(collegeStore.colleges);
+const { events: timelineEvents } = useDeadlineTimeline();
 
 const collegeStats = computed(() => ({
     total: collegeStore.colleges.length,
@@ -46,7 +44,7 @@ const commandStats = computed(() => ({
     openTasks: applicationStore.tasks.filter((task) => task.status !== "Done")
         .length,
     submitted: applicationStore.applications.filter((application) =>
-        ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(
+        ["Submitted", "Accepted", "Waitlisted", "Deferred", "Rejected"].includes(
             application.status,
         ),
     ).length,
@@ -56,93 +54,16 @@ const commandStats = computed(() => ({
     ).length,
 }));
 
-function isTrackedScholarship(
-    scholarship: (typeof scholarshipStore.scholarships)[number],
-): boolean {
-    if (!scholarship.isSample) return true;
-    return (
-        scholarship.docLinks.length > 0 ||
-        scholarship.essayLinks.length > 0 ||
-        scholarship.notes.trim().length > 0 ||
-        scholarship.checklist.some(
-            (item) =>
-                item.status !== "Needed" && item.status !== "Not Needed",
-        )
-    );
-}
-
 const upcomingDeadlines = computed(() => {
     const today = new Date(); today.setHours(0,0,0,0);
-    const collegeDeadlines = collegeStore.colleges
-        .filter((c) => c.deadline && new Date(c.deadline + "T00:00:00") >= today)
-        .map((c) => ({
-            name: c.name,
-            deadline: c.deadline,
-            type: "college" as const,
-            meta: c.applicationType || c.category,
-        }));
-    const scholarshipDeadlines = scholarshipStore.scholarships
-        .filter((s) => {
-            if (!s.deadline) return false;
-            if (new Date(s.deadline + "T00:00:00") < today) return false;
-            return isTrackedScholarship(s);
-        })
-        .map((s) => ({
-            name: s.name,
-            deadline: s.deadline,
-            type: "scholarship" as const,
-            meta: "Scholarship",
-        }));
-    const taskDeadlines = applicationStore.tasks
-        .filter((task) => task.status !== "Done" && task.dueDate)
-        .map((task) => ({
-            name: task.title,
-            deadline: task.dueDate,
-            type: "task" as const,
-            meta:
-                collegeStore.colleges.find(
-                    (college) => college.id === task.collegeId,
-                )?.name || task.type,
-        }));
-    const recommendationDeadlines = applicationStore.recommendations
-        .filter(
-            (recommendation) =>
-                !["Submitted", "Declined"].includes(recommendation.status) &&
-                recommendation.dueDate,
-        )
-        .map((recommendation) => ({
-            name: `${recommendation.name}'s recommendation`,
-            deadline: recommendation.dueDate,
-            type: "recommendation" as const,
-            meta: recommendation.role || "Recommendation",
-        }));
-    const visitDates = researchStore.visits
-        .filter(
-            (visit) =>
-                visit.date &&
-                new Date(`${visit.date}T00:00:00`) >= today,
-        )
-        .map((visit) => ({
-            name: `${
-                collegeStore.colleges.find(
-                    (college) => college.id === visit.collegeId,
-                )?.name || "College"
-            }: ${visit.type}`,
-            deadline: visit.date,
-            type: "visit" as const,
-            meta: visit.contact || "Visit or interview",
-        }));
-    return [
-        ...collegeDeadlines,
-        ...scholarshipDeadlines,
-        ...taskDeadlines,
-        ...recommendationDeadlines,
-        ...visitDates,
-    ]
-        .sort(
-            (a, b) =>
-                new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
-        )
+    return timelineEvents.value
+        .filter((event) => new Date(`${event.date}T00:00:00`) >= today)
+        .map((event) => ({
+            name: event.title,
+            deadline: event.date,
+            type: event.kind,
+            meta: event.detail,
+        }))
         .slice(0, 10);
 });
 

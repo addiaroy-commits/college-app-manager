@@ -8,6 +8,7 @@ import { useDocumentStore } from "../stores/documentStore";
 import { useCostStore } from "../stores/costStore";
 import { useApplicationStore } from "../stores/applicationStore";
 import { usePreferenceStore } from "../stores/preferenceStore";
+import { useDeadlineTimeline } from "../composables/useDeadlineTimeline";
 
 const router = useRouter();
 const user = useUserStore();
@@ -18,11 +19,11 @@ const costs = useCostStore();
 const applications = useApplicationStore();
 const preferences = usePreferenceStore();
 applications.ensureApplications(colleges.colleges);
+const { events: timelineEvents } = useDeadlineTimeline();
 
-const submitted = computed(() => applications.applications.filter((item) => ["Submitted", "Accepted", "Waitlisted", "Rejected"].includes(item.status)).length);
+const submitted = computed(() => applications.applications.filter((item) => ["Submitted", "Accepted", "Waitlisted", "Deferred", "Rejected"].includes(item.status)).length);
 const completedEssays = computed(() => essays.essays.filter((essay) => essay.status === "Done").length);
 const openTasks = computed(() => applications.tasks.filter((task) => task.status !== "Done"));
-const pendingRecommendations = computed(() => applications.recommendations.filter((item) => !["Submitted", "Declined"].includes(item.status)));
 const averageCompletion = computed(() => {
     if (!applications.applications.length) return 0;
     const total = applications.applications.reduce((sum, application) => {
@@ -41,13 +42,11 @@ const applicationRows = computed(() => colleges.colleges.map((college) => {
 }).sort((a, b) => new Date(a.college.deadline || "2999-12-31").getTime() - new Date(b.college.deadline || "2999-12-31").getTime()));
 
 const upcoming = computed(() => {
-    const rows = [
-        ...colleges.colleges.filter((college) => college.deadline).map((college) => ({ id: `c-${college.id}`, title: `${college.name} application`, date: college.deadline, type: "Application" })),
-        ...openTasks.value.filter((task) => task.dueDate).map((task) => ({ id: `t-${task.id}`, title: task.title, date: task.dueDate, type: task.type })),
-        ...pendingRecommendations.value.filter((item) => item.dueDate).map((item) => ({ id: `r-${item.id}`, title: `${item.name}'s recommendation`, date: item.dueDate, type: "Recommendation" })),
-    ];
     const today = new Date(); today.setHours(0,0,0,0);
-    return rows.filter((row) => new Date(`${row.date}T00:00:00`) >= today).sort((a,b) => a.date.localeCompare(b.date)).slice(0, 8);
+    return timelineEvents.value
+        .filter((event) => new Date(`${event.date}T00:00:00`) >= today)
+        .map((event) => ({ id: event.id, title: event.title, date: event.date, type: event.kind.replace("-", " ") }))
+        .slice(0, 8);
 });
 
 const costSummary = computed(() => {
